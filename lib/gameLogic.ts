@@ -90,7 +90,8 @@ export function createInitialState(): GameState {
 
 export function startGame(
   state: GameState,
-  playerNames?: Record<string, string>
+  playerNames?: Record<string, string>,
+  activeSlots?: string[]
 ): GameState {
   let s = { ...state }
 
@@ -105,7 +106,8 @@ export function startGame(
   const shuffledVisitors = shuffle(VISITOR_CARDS)
   const shuffledCurses = shuffle(CURSE_CARDS)
 
-  const SLOTS = ['player_1', 'player_2', 'player_3', 'player_4']
+  const ALL_SLOTS = ['player_1', 'player_2', 'player_3', 'player_4']
+  const SLOTS = activeSlots ?? ALL_SLOTS
   const players: Player[] = SLOTS.map((slotId, i) => ({
     id: slotId,
     name: playerNames?.[slotId] ?? `Player ${i + 1}`,
@@ -133,7 +135,7 @@ export function startGame(
     curse: 0,
     faithTarget: faith,
     players,
-    actionDeck: shuffledActions.slice(12),
+    actionDeck: shuffledActions.slice(SLOTS.length * 3),
     actionDiscard: [],
     eventDeck: shuffledEvents,
     currentEvent: null,

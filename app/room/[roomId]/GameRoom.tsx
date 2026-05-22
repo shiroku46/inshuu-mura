@@ -203,7 +203,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   // ─ アクションハンドラ ─────────────────────────────────────
   async function handleStart() {
     if (!isHost) return
-    const newState = startGame(createInitialState(), playerNames)
+    const newState = startGame(createInitialState(), playerNames, connectedSlots)
     await pushState(roomId, newState)
     setViewingObjectiveId(null)
   }
@@ -311,13 +311,20 @@ export default function GameRoom({ roomId }: { roomId: string }) {
           </div>
 
           {isHost ? (
-            <button
-              onClick={handleStart}
-              disabled={connectedSlots.length < 1}
-              className="py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-lg transition"
-            >
-              ゲーム開始（{connectedSlots.length}人）
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleStart}
+                disabled={connectedSlots.length < 3}
+                className="py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-lg transition"
+              >
+                ゲーム開始（{connectedSlots.length}人）
+              </button>
+              {connectedSlots.length < 3 && (
+                <div className="text-center text-stone-500 text-xs">
+                  最低3人必要です（あと{3 - connectedSlots.length}人）
+                </div>
+              )}
+            </div>
           ) : (
             <div className="text-center text-stone-400 text-sm py-2">
               ホスト（P1）がゲームを開始するまでお待ちください
