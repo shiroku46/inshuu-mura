@@ -83,15 +83,24 @@ async function pushState(roomId: string, newState: GameState) {
 
 // ─── ゲージ ───────────────────────────────────────────────────
 
-function Gauge({ label, value, max, color }: {
-  label: string; value: number; max: number; color: string
+function Gauge({ label, value, max, color, previewValue }: {
+  label: string; value: number; max: number; color: string; previewValue?: number
 }) {
-  const pct = Math.min(100, (value / max) * 100)
+  const display = previewValue ?? value
+  const delta = previewValue !== undefined ? previewValue - value : 0
+  const pct = Math.min(100, (display / max) * 100)
   return (
     <div className="flex flex-col gap-1 min-w-[100px]">
       <div className="flex justify-between text-xs font-semibold">
         <span>{label}</span>
-        <span>{value}/{max}</span>
+        <span className="flex items-center gap-1">
+          <span className={previewValue !== undefined ? 'text-amber-300' : ''}>{display}/{max}</span>
+          {delta !== 0 && (
+            <span className={`text-[10px] font-bold ${delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              ({delta > 0 ? `+${delta}` : delta})
+            </span>
+          )}
+        </span>
       </div>
       <div className="w-full bg-gray-700 rounded-full h-3">
         <div className={`h-3 rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
@@ -109,6 +118,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({})
   const [roomNotFound, setRoomNotFound] = useState(false)
   const [viewingObjectiveId, setViewingObjectiveId] = useState<string | null>(null)
+  const [hoverDeltas, setHoverDeltas] = useState<{ tradition: number; openness: number; curse: number } | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   // ─ 初期ロード ─────────────────────────────────────────────
@@ -343,9 +353,12 @@ export default function GameRoom({ roomId }: { roomId: string }) {
         <div className="bg-stone-800 rounded-xl p-3 shadow">
           <div className="flex flex-wrap gap-4 items-start justify-between">
             <div className="flex flex-wrap gap-4 flex-1">
-              <Gauge label="因習度" value={gs.tradition} max={20} color="bg-purple-500" />
-              <Gauge label="開放度" value={gs.openness} max={10} color="bg-sky-500" />
-              <Gauge label="祟り" value={gs.curse} max={10} color="bg-red-500" />
+              <Gauge label="因習度" value={gs.tradition} max={20} color="bg-purple-500"
+                previewValue={hoverDeltas ? Math.max(0, Math.min(20, gs.tradition + hoverDeltas.tradition)) : undefined} />
+              <Gauge label="開放度" value={gs.openness} max={10} color="bg-sky-500"
+                previewValue={hoverDeltas ? Math.max(0, Math.min(10, gs.openness + hoverDeltas.openness)) : undefined} />
+              <Gauge label="祟り" value={gs.curse} max={10} color="bg-red-500"
+                previewValue={hoverDeltas ? Math.max(0, Math.min(10, gs.curse + hoverDeltas.curse)) : undefined} />
             </div>
             <div className="text-right text-sm text-stone-400 shrink-0">
               <div>ラウンド <span className="text-white font-bold text-lg">{gs.round}</span></div>
@@ -458,6 +471,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                 viewingObjectiveId={viewingObjectiveId}
                 onViewObjective={id => setViewingObjectiveId(viewingObjectiveId === id ? null : id)}
                 onUseCard={isMyActionTurn() ? handleUseCard : undefined}
+                onHoverCard={setHoverDeltas}
+                onLeaveCard={() => setHoverDeltas(null)}
               />
             ))}
           </div>
@@ -522,9 +537,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 // ─── カード効果プレビュー ─────────────────────────────────────
 
 const EFFECT_META = {
-  tradition: { label: '因習', upColor: 'text-purple-700', downColor: 'text-purple-500' },
-  openness:  { label: '開放', upColor: 'text-sky-700',    downColor: 'text-sky-500' },
-  curse:     { label: '祟り',  upColor: 'text-red-700',    downColor: 'text-red-400' },
+  tradition: { label: '因習', color: 'text-purple-800' },
+  openness:  { label: '開放', color: 'text-sky-800' },
+  curse:     { label: '祟り',  color: 'text-red-800' },
 } as const
 
 function CardDeltaPreview({ preview }: { preview: ReturnType<typeof previewCardEffect> }) {
@@ -534,10 +549,7 @@ function CardDeltaPreview({ preview }: { preview: ReturnType<typeof previewCardE
       {preview.map(({ key, value }) => {
         const meta = EFFECT_META[key]
         return (
-          <span
-            key={key}
-            className={`text-[11px] font-bold ${value > 0 ? meta.upColor : meta.downColor}`}
-          >
+          <span key={key} className={`text-[11px] font-bold ${meta.color}`}>
             {meta.label}{value > 0 ? `+${value}` : value}
           </span>
         )
@@ -887,7 +899,7 @@ function ChuzaiNullifyControls({
 
 function PlayerPanel({
   player, isCurrentTurn, isCurrentVoter, isMe, gs,
-  viewingObjectiveId, onViewObjective, onUseCard,
+  viewingObjectiveId, onViewObjective, onUseCard, onHoverCard, onLeaveCard,
 }: {
   player: Player
   isCurrentTurn: boolean
@@ -897,6 +909,8 @@ function PlayerPanel({
   viewingObjectiveId: string | null
   onViewObjective: (id: string) => void
   onUseCard?: (playerId: string, cardInstanceId: string) => void
+  onHoverCard?: (deltas: { tradition: number; openness: number; curse: number }) => void
+  onLeaveCard?: () => void
 }) {
   const isViewingObjective = viewingObjectiveId === player.id
 
@@ -969,6 +983,7 @@ function PlayerPanel({
             const canUse = isMe && isCurrentTurn && player.alive && gs.phase === 'action' && usable && !!onUseCard
             const playerIdx = gs.players.findIndex(p => p.id === player.id)
             const preview = previewCardEffect(gs, card, playerIdx)
+            const previewDeltas = { tradition: 0, openness: 0, curse: 0, ...Object.fromEntries(preview.map(({ key, value }) => [key, value])) }
             return (
               <div
                 key={card.instanceId}
@@ -987,6 +1002,8 @@ function PlayerPanel({
                   {isMe && isCurrentTurn && player.alive && (
                     <button
                       onClick={e => { e.stopPropagation(); if (canUse) onUseCard!(player.id, card.instanceId) }}
+                      onMouseEnter={() => canUse && onHoverCard?.(previewDeltas)}
+                      onMouseLeave={() => onLeaveCard?.()}
                       disabled={!canUse}
                       className={`shrink-0 px-2 py-1 rounded text-[10px] font-bold transition ${
                         canUse
