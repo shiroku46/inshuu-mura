@@ -1,295 +1,467 @@
-import type {
-  FaithTarget,
-  CharacterCard,
-  ObjectiveCard,
-  ActionCard,
-  EventCard,
-  VisitorCard,
-  CurseCard,
-  GameStateSnapshot,
-} from '@/types/game'
+import type { FaithCard, TerrainCard, FacilityCard, EventCard, VisitorCard, CharacterCard, ObjectiveCard } from '@/types/game'
 
 // ─── 信仰対象カード ───────────────────────────────────────────
-export const FAITH_TARGETS: FaithTarget[] = [
+export const FAITH_CARDS: FaithCard[] = [
   {
     id: 'faith_mountain_god',
-    name: '山神',
-    description: '山に宿る古き神。開放を嫌い、外来者の命を望む。',
-    effects: [
-      '開放度が上昇するたびに祟り+1',
-      '訪問者を生贄にするたびに因習度+1',
-    ],
+    type: 'faith',
+    name: '山奥の地主神',
+    description: '山奥に宿る古き神。開放が進むほど祟りも増す。',
+    tags: ['因習', '祟り'],
+    effectText: '開放度上昇時：祟り+1（上昇量分）。訪問者生贄時：因習度+1',
   },
   {
-    id: 'faith_water_god',
-    name: '水神',
-    description: '川と深淵を支配する神。祟りの減少を糧に、因習を深める。',
-    effects: [
-      '祟りが減少するたびに因習度+1',
-      '祟りが0となった時点で因習度が即時消滅し、ゲーム終了',
-    ],
-  },
-  {
-    id: 'faith_thunder_god',
-    name: '雷神',
-    description: '嵐を呼ぶ荒ぶる神。祟りカードの発動を力に変える。',
-    effects: [
-      '祟りカードが発動したとき、因習度+1',
-      '3ラウンドを超えた時点から毎ラウンド祟り+2',
-    ],
+    id: 'faith_festival_god',
+    type: 'faith',
+    name: '祭囃子に宿るもの',
+    description: '祭りの音に宿る霊。生贄の儀式を喜ぶ。',
+    tags: ['因習', '祟り', '生贄'],
+    effectText: '生贄イベント発生時：祟り+1。開放度3以上で訪問者生贄時：因習度+1',
   },
 ]
 
 // ─── キャラクターカード ───────────────────────────────────────
 export const CHARACTER_CARDS: CharacterCard[] = [
   {
-    id: 'char_shinto_priest',
-    name: '神主',
-    description: '村の神事を取り仕切る。信仰の力に精通している。',
-    abilityDescription: '信仰カードを使ったとき、祟りをさらに-1する。',
-  },
-  {
-    id: 'char_village_officer',
-    name: '村役場職員',
-    description: '村の行政を担う職員。村の開放化を推進する。',
-    abilityDescription: '開放カードを使ったとき、開放度をさらに+1する。',
-  },
-  {
     id: 'char_village_chief',
+    type: 'character',
     name: '村長',
-    description: '村の権力者。その一票は重い。',
-    abilityDescription: '生贄投票で、自分の票を2票として数えてよい。',
+    description: '村の権力者。その言葉は重い。',
+    tags: ['因習', '権力'],
+    effectText: 'ラウンド終了時：因習度+1',
+    passiveEffectText: 'ラウンド終了時：因習度+1',
+    passiveEffectType: 'roundEnd',
+  },
+  {
+    id: 'char_shinto_priest',
+    type: 'character',
+    name: '神主',
+    description: '村の神事を取り仕切る人物。',
+    tags: ['信仰', '因習'],
+    effectText: '生贄成立時：祟り-1',
+    passiveEffectText: '生贄成立時：祟り-1',
+    passiveEffectType: 'sacrifice',
   },
   {
     id: 'char_doctor',
-    name: '医者',
-    description: '村に赴任してきた医者。死を少しだけ遠ざける。',
-    abilityDescription: '生存中、訪問者の生贄による開放度減少は-1で固定される。',
+    type: 'character',
+    name: '医師',
+    description: '村に赴任してきた医者。',
+    tags: ['開放', '祟り'],
+    effectText: 'ラウンド終了時：祟り+1、開放度+1',
+    passiveEffectText: 'ラウンド終了時：祟り+1、開放度+1',
+    passiveEffectType: 'roundEnd',
+  },
+  {
+    id: 'char_tourism_officer',
+    type: 'character',
+    name: '観光課長',
+    description: '村の開放化を推進する職員。',
+    tags: ['開放', '祟り'],
+    effectText: 'ラウンド終了時：開放度+1',
+    passiveEffectText: 'ラウンド終了時：開放度+1',
+    passiveEffectType: 'roundEnd',
   },
   {
     id: 'char_villager',
+    type: 'character',
     name: '村人',
-    description: '普通の村人。特別な能力はない。',
-    abilityDescription: '能力なし。',
+    description: '普通の村人。',
+    tags: ['生存'],
+    effectText: 'パッシブ能力なし',
+    passiveEffectText: 'パッシブ能力なし',
+    passiveEffectType: 'none',
   },
   {
-    id: 'char_chuzai',
-    name: '駐在',
-    description: '村の駐在所に勤める警察官。不正を見逃さない。',
-    abilityDescription: '生贄投票で、自分以外に投じられた票を1票だけ無効にしてよい。',
+    id: 'char_elder',
+    type: 'character',
+    name: '古老',
+    description: '村の歴史を知る高齢者。',
+    tags: ['因習', '知識'],
+    effectText: 'パッシブ能力なし',
+    passiveEffectText: 'パッシブ能力なし',
+    passiveEffectType: 'none',
   },
 ]
 
-// ─── 目的カード（ハンドアウト）────────────────────────────────
+// ─── 目的カード ───────────────────────────────────────────────
 export const OBJECTIVE_CARDS: ObjectiveCard[] = [
   {
-    id: 'obj_complete_tradition',
-    name: '因習の完成',
-    description: '因習村完成エンドかつ祟りが5以下で終了したら勝利。',
-    tags: ['因習', '祟り'],
-    checkWin: (_s: GameStateSnapshot) => false,
+    id: 'obj_tradition_village',
+    type: 'objective',
+    name: '因習村化',
+    description: 'ゲーム終了時、因習度8以上で勝利',
+    tags: ['因習', '勝利'],
+    effectText: '因習度 ≥ 8 で勝利',
+    victoryConditionType: 'tradition',
+    victoryCondition: { traditionMin: 8 },
   },
   {
-    id: 'obj_curse_manifestation',
-    name: '祟りの顕現',
-    description: '祟りエンドで終了したら勝利。',
-    tags: ['祟り'],
-    checkWin: (_s: GameStateSnapshot) => false,
+    id: 'obj_tourist_development',
+    type: 'objective',
+    name: '観光地化',
+    description: 'ゲーム終了時、開放度6以上で勝利',
+    tags: ['開放', '勝利'],
+    effectText: '開放度 ≥ 6 で勝利',
+    victoryConditionType: 'openness',
+    victoryCondition: { openessMax: 6 },
   },
   {
-    id: 'obj_tourist_village',
-    name: '観光地化の皮',
-    description: '観光地化エンドで終了、または因習村完成エンドかつ開放度5以上で勝利。',
-    tags: ['因習', '開放'],
-    checkWin: (_s: GameStateSnapshot) => false,
+    id: 'obj_curse_suppression',
+    type: 'objective',
+    name: '祟りの鎮静',
+    description: 'ゲーム終了時、祟り2以下で勝利',
+    tags: ['祟り', '勝利'],
+    effectText: '祟り ≤ 2 で勝利',
+    victoryConditionType: 'curseMin',
+    victoryCondition: { curseMax: 2 },
+  },
+  {
+    id: 'obj_curse_expansion',
+    type: 'objective',
+    name: '災厄の拡大',
+    description: 'ゲーム終了時、祟り7以上で勝利',
+    tags: ['祟り', '勝利'],
+    effectText: '祟り ≥ 7 で勝利',
+    victoryConditionType: 'curseMax',
+    victoryCondition: { curseMin: 7 },
   },
   {
     id: 'obj_closed_village',
-    name: '閉じた村',
-    description: '過疎村エンド・停滞エンド・因習村完成エンドのいずれかで、開放度2以下なら勝利。',
-    tags: ['因習', '開放'],
-    checkWin: (_s: GameStateSnapshot) => false,
+    type: 'objective',
+    name: '閉鎖集落',
+    description: 'ゲーム終了時、因習度5以上かつ開放度2以下で勝利',
+    tags: ['因習', '開放', '勝利'],
+    effectText: '因習度 ≥ 5 AND 開放度 ≤ 2 で勝利',
+    victoryConditionType: 'closedVillage',
+    victoryCondition: { traditionMin: 5, openessMax: 2 },
   },
   {
-    id: 'obj_willing_sacrifice',
-    name: '生贄志願',
-    description: '自分が生贄として死亡したら即勝利。',
-    tags: ['生存死亡'],
-    checkWin: (_s: GameStateSnapshot) => false,
-    immediateWin: true,
-  },
-  {
-    id: 'obj_sacrifice_keeper',
-    name: '贄帳の番人',
-    description: 'ゲーム終了時に自身が生存しており、ゲーム中に4人以上が生贄となっていたら勝利。',
-    tags: ['生存死亡'],
-    checkWin: (_s: GameStateSnapshot) => false,
-  },
-  {
-    id: 'obj_powerful_survivor',
-    name: '権力者の生存',
-    description: 'ゲーム終了時に自身が生存しており、祟りが5以上で終了したら勝利。',
-    tags: ['生存死亡', '祟り'],
-    checkWin: (_s: GameStateSnapshot) => false,
+    id: 'obj_balance_maintenance',
+    type: 'objective',
+    name: '均衡維持',
+    description: 'ゲーム終了時、各トークンが指定範囲内で勝利',
+    tags: ['均衡', '勝利'],
+    effectText: '因習度: 3-7, 開放度: 3-7, 祟り: 3-5 で勝利',
+    victoryConditionType: 'balance',
+    victoryCondition: { traditionMin: 3, curseMin: 3, curseMax: 5 },
   },
 ]
 
-// ─── 行動カード（7種×2枚）────────────────────────────────────
-const ACTION_CARD_DEFINITIONS: Omit<ActionCard, 'instanceId'>[] = [
-  // 因習カード
+// ─── 地形カード出力値を定義 ────────────────────────────────────
+const terrainOutputs: Record<string, { inshuOutput: number; opennessOutput: number; curseOutput: number }> = {
+  terrain_normal_road: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_curved_road: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_crossroads: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_mountain_path: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  terrain_river: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
+  terrain_lake: { inshuOutput: 0, opennessOutput: 0, curseOutput: 1 },
+}
+
+// ─── 地形カード ───────────────────────────────────────────────
+const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOutput' | 'curseOutput'>[] = [
   {
-    id: 'act_revive_old_rules',
-    name: '古い掟の復活',
-    type: 'tradition',
-    description: '因習度+1、開放度-1',
+    id: 'terrain_normal_road',
+    name: '普通の道',
+    description: '村を通る普通の道。',
+    tags: ['移動', '繋がり'],
+    effectText: '他のカードへの接続を可能にする',
+    connections: ['up', 'down'],
   },
   {
-    id: 'act_night_festival',
-    name: '夜祭の準備',
-    type: 'tradition',
-    description: '因習度+1、開放度-1。来訪者欄に訪問者がいれば因習度+2に変わる。',
-  },
-  // 開放カード
-  {
-    id: 'act_tourism_pamphlet',
-    name: '観光パンフレット',
-    type: 'open',
-    description: '開放度+1、因習度-1',
+    id: 'terrain_curved_road',
+    name: '曲がり道',
+    description: '複雑に曲がった道。',
+    tags: ['移動', '複雑'],
+    effectText: '方向を変える接続が可能',
+    connections: ['up', 'right'],
   },
   {
-    id: 'act_ghost_spot',
-    name: '心霊スポットとして売り出す',
-    type: 'open',
-    description: '開放度+1、祟り+1',
-  },
-  // 信仰カード
-  {
-    id: 'act_repair_shrine',
-    name: '祠の修繕',
-    type: 'faith',
-    description: '祟り-2、開放度-1',
+    id: 'terrain_crossroads',
+    name: '辻道',
+    description: '複数の道が交わる地点。',
+    tags: ['移動', '中心'],
+    effectText: '複数のカードを繋ぐことができる',
+    connections: ['up', 'right', 'down', 'left'],
   },
   {
-    id: 'act_touch_taboo',
-    name: '禁忌の術式',
-    type: 'faith',
-    description: '祟り+2、因習度+1、開放度-1',
+    id: 'terrain_mountain_path',
+    name: '山道',
+    description: '険しい山越えの道。',
+    tags: ['移動', '困難'],
+    effectText: '困難な接続を表す',
+    connections: ['up', 'down'],
   },
-  // 生贄カード
   {
-    id: 'act_sacrifice_selection',
-    name: '贄の選定',
-    type: 'sacrifice',
-    description: '祟り+1。このラウンド終了時、祟りが4以上なら生贄投票が発生する。',
+    id: 'terrain_river',
+    name: '川',
+    description: '村を流れる川。',
+    tags: ['水', '境界'],
+    effectText: '区域を分ける境界線として機能',
+    connections: ['left', 'right'],
+  },
+  {
+    id: 'terrain_lake',
+    name: '湖',
+    description: '村近郊の湖。',
+    tags: ['水', '祟り'],
+    effectText: '祟りと関連する場所として機能',
+    connections: [],
   },
 ]
 
-export const ACTION_CARDS: ActionCard[] = ACTION_CARD_DEFINITIONS.flatMap((def) => [
-  { ...def, instanceId: `${def.id}_a` },
-  { ...def, instanceId: `${def.id}_b` },
-])
+export const TERRAIN_CARDS: TerrainCard[] = TERRAIN_CARD_DEFS.map(card => {
+  const outputs = terrainOutputs[card.id] || { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 }
+  return {
+    ...card,
+    type: 'terrain' as const,
+    ...outputs,
+  }
+})
 
-// ─── 訪問者カード ─────────────────────────────────────────────
-// 通常デッキに入る4種。警察官はイベント「警察の聞き込み」で来訪者欄に直接追加される。
-export const VISITOR_CARDS: VisitorCard[] = [
+// ─── 地形カードデッキ（各2枚） ────────────────────────────────
+export const TERRAIN_DECK: TerrainCard[] = TERRAIN_CARD_DEFS.flatMap(def => {
+  const outputs = terrainOutputs[def.id] || { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 }
+  return [
+    { ...def, type: 'terrain' as const, ...outputs },
+    { ...def, type: 'terrain' as const, ...outputs },
+  ]
+})
+
+// ─── 施設カード出力値を定義 ────────────────────────────────────
+const facilityOutputs: Record<string, { inshuOutput: number; opennessOutput: number; curseOutput: number }> = {
+  facility_shrine: { inshuOutput: 2, opennessOutput: 0, curseOutput: -1 },
+  facility_old_well: { inshuOutput: 1, opennessOutput: 0, curseOutput: 1 },
+  facility_police_box: { inshuOutput: 0, opennessOutput: 2, curseOutput: 0 },
+  facility_information_center: { inshuOutput: 0, opennessOutput: 3, curseOutput: 0 },
+  facility_graveyard: { inshuOutput: 1, opennessOutput: 0, curseOutput: 1 },
+  facility_small_shrine: { inshuOutput: 2, opennessOutput: 0, curseOutput: 0 },
+}
+
+// ─── 施設カード ───────────────────────────────────────────────
+const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'inshuOutput' | 'opennessOutput' | 'curseOutput'>[] = [
   {
-    id: 'vis_folklorist',
-    name: '民俗学者',
-    effectDescription: '【パッシブ】場にある限り、因習カードの因習度と祟りに+1補正',
-    description: '村の伝承を調べに来た研究者。',
+    id: 'facility_shrine',
+    name: '神社',
+    description: '信仰の中心となる大きな神社。',
+    tags: ['信仰', '中心'],
+    effectText: '（将来実装：信仰関連の効果）',
   },
   {
-    id: 'vis_streamer',
-    name: '配信者',
-    effectDescription: '【パッシブ】場にある限り、開放カードの開放度と祟りに+1補正',
-    description: '村を動画で紹介する配信者。',
+    id: 'facility_old_well',
+    name: '古井戸',
+    description: '村の古い井戸。祟りの源？',
+    tags: ['祟り', '秘密'],
+    effectText: '（将来実装：祟り関連の効果）',
   },
   {
-    id: 'vis_contractor',
-    name: '土木業者',
-    effectDescription: '【パッシブ】場にある限り、信仰カードの祟りに+2補正',
-    description: '道路や施設の整備に関わる業者。',
+    id: 'facility_police_box',
+    name: '駐在所',
+    description: '警察の詰所。秩序を守る場所。',
+    tags: ['開放', '秩序'],
+    effectText: '（将来実装：開放度関連の効果）',
   },
   {
-    id: 'vis_tourist',
-    name: '観光客',
-    effectDescription: '【生贄時】因習度+1',
-    description: '村を訪れた観光客。生贄にされると村の因習が深まる。',
+    id: 'facility_information_center',
+    name: '観光案内所',
+    description: '村の観光情報を発信する場所。',
+    tags: ['開放', '訪問者'],
+    effectText: '（将来実装：訪問者・開放度関連の効果）',
+  },
+  {
+    id: 'facility_graveyard',
+    name: '墓地',
+    description: '村の古い歴史を埋葬する場所。',
+    tags: ['因習', '祟り'],
+    effectText: '（将来実装：因習・祟り関連の効果）',
+  },
+  {
+    id: 'facility_small_shrine',
+    name: '祠',
+    description: '小さな祠。信仰の拠点。',
+    tags: ['信仰'],
+    effectText: '（将来実装：信仰関連の効果）',
   },
 ]
 
-// ─── 祟りカード ───────────────────────────────────────────────
-// 発動条件：ラウンド終了時に祟りが6以上
-// 共通構造：因習+X → デバフ適用 → 生贄投票（祟り-1）
-export const CURSE_CARDS: CurseCard[] = [
-  {
-    id: 'curse_mountain_roar',
-    name: '山鳴り',
-    description: '山が轟音を上げ、神の怒りが村を揺るがす。',
-    inshuPointGain: 5,
-    triggersSacrifice: true,
-    debuffType: 'openness_decrease',
-    debuffAmount: 3,
-    debuffDescription: '開放度-3',
-  },
-  {
-    id: 'curse_abyss_call',
-    name: '水底の呼び声',
-    description: '深淵から声が聞こえ、外界との繋がりが水底に沈んでいく。',
-    inshuPointGain: 6,
-    triggersSacrifice: true,
-    debuffType: 'openness_decrease',
-    debuffAmount: 2,
-    debuffDescription: '開放度-2。以降、因習カードによる因習度上昇-1',
-  },
-  {
-    id: 'curse_thunder_strike',
-    name: '雷鎚鳴る',
-    description: '雷神の槌が降り注ぎ、村人の持ち物を焼き尽くす。',
-    inshuPointGain: 4,
-    triggersSacrifice: true,
-    debuffType: 'discard_all_cards',
-    debuffAmount: 0,
-    debuffDescription: '全プレイヤーの手持ちのカードをすべて捨て札にする',
-  },
-]
+export const FACILITY_CARDS: FacilityCard[] = FACILITY_CARD_DEFS.map(card => {
+  const outputs = facilityOutputs[card.id] || { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 }
+  return {
+    ...card,
+    type: 'facility' as const,
+    connectedToEntrance: false,
+    ...outputs,
+  }
+})
+
+// ─── 施設カードデッキ（各1枚） ────────────────────────────────
+export const FACILITY_DECK: FacilityCard[] = FACILITY_CARD_DEFS.map(def => {
+  const outputs = facilityOutputs[def.id] || { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 }
+  return {
+    ...def,
+    type: 'facility' as const,
+    connectedToEntrance: false,
+    ...outputs,
+  }
+})
 
 // ─── イベントカード ───────────────────────────────────────────
 export const EVENT_CARDS: EventCard[] = [
   {
     id: 'evt_festival_season',
+    type: 'event',
     name: '祭りの季節',
-    type: 'event',
-    description: 'このラウンドに使用するカードの因習度に+1補正',
+    description: '村で大きな祭りが催される。',
+    tags: ['因習', 'イベント'],
+    effectText: '因習度+1。来訪者がいれば生贄イベント発生',
+    targetCardId: null,
   },
   {
-    id: 'evt_village_revival',
-    name: '村おこしの機運',
+    id: 'evt_foreign_journalist',
     type: 'event',
-    description: 'このラウンドに使用するカードの開放度に+1補正',
+    name: '外部記者が来る',
+    description: '外部のマスコミが村を取材に来た。',
+    tags: ['開放', 'イベント'],
+    effectText: '開放度3以上なら祟り+1',
+    targetCardId: null,
   },
   {
-    id: 'evt_ominous_rumor',
-    name: '不穏な噂',
+    id: 'evt_youth_disappearance',
     type: 'event',
-    description: 'このラウンドに使用する祟りが上昇するカードの祟りに+1補正',
+    name: '若者の失踪',
+    description: '村の若者が忽然と姿を消す。',
+    tags: ['祟り', 'イベント'],
+    effectText: '祟り+1。来訪者欄の訪問者1人を捨て札',
+    targetCardId: null,
   },
   {
-    id: 'evt_shrine_destroyed',
-    name: '祠の破壊',
+    id: 'evt_shrine_destruction',
     type: 'event',
-    description: '即時に祟り+2。訪問者に観光客か配信者がいれば祟り+3（重複なし）',
+    name: '祠が壊れる',
+    description: '村の祠が何らかの理由で破壊される。',
+    tags: ['祟り', 'イベント'],
+    effectText: '祟り+2',
+    targetCardId: null,
+  },
+  {
+    id: 'evt_spiritual_spot_spread',
+    type: 'event',
+    name: '心霊スポットとして拡散',
+    description: 'SNSで心霊スポットとして話題になる。',
+    tags: ['開放', '祟り', 'イベント'],
+    effectText: '開放度+1、祟り+1',
+    targetCardId: null,
+  },
+  {
+    id: 'evt_relocation_candidate_visit',
+    type: 'event',
+    name: '移住希望者の視察',
+    description: '移住を考えている人が村を訪れる。',
+    tags: ['開放', 'イベント'],
+    effectText: '開放度+1',
+    targetCardId: null,
+  },
+  {
+    id: 'evt_kamikakushi_night',
+    type: 'event',
+    name: '神隠しの夜',
+    description: 'この夜、何かが村を訪れる。',
+    tags: ['祟り', 'イベント'],
+    effectText: '生贄イベント発生',
+    targetCardId: null,
   },
   {
     id: 'evt_police_inquiry',
-    name: '警察の聞き込み',
     type: 'event',
-    description: '即時に因習度-1、開放度-1。来訪者欄に警察官を置く',
+    name: '警察の聞き込み',
+    description: '警察がやってきて村人に聞き込みをする。',
+    tags: ['開放', 'イベント'],
+    effectText: '開放度4以上なら祟り+2、3以下なら祟り+1',
+    targetCardId: null,
   },
   {
-    id: 'evt_divine_kidnapping',
-    name: '神隠しの夜',
+    id: 'evt_sacrifice_ritual',
     type: 'event',
-    description: 'このラウンド終了時、必ず生贄投票が発生する',
+    name: '生贄の儀式',
+    description: '祟りを鎮めるための儀式が執り行われる。',
+    tags: ['祟り', '生贄', 'イベント'],
+    effectText: '因習度+3、開放度-2、祟り-2',
+    targetCardId: null,
+  },
+]
+
+// ─── 訪問者カード ───────────────────────────────────────────────
+export const VISITOR_CARDS: VisitorCard[] = [
+  {
+    id: 'vis_tourist',
+    type: 'visitor',
+    name: '観光客',
+    description: '村を訪れた観光客。',
+    tags: ['開放', '訪問者'],
+    effectText: '因習度+1',
+    requiredOpenness: 1,
+  },
+  {
+    id: 'vis_folklorist',
+    type: 'visitor',
+    name: '民俗学者',
+    description: '村の伝承を調べに来た研究者。',
+    tags: ['因習', '知識', '訪問者'],
+    effectText: '他プレイヤー1人の目的のタグを確認できる',
+    requiredOpenness: 2,
+  },
+  {
+    id: 'vis_relocation_candidate',
+    type: 'visitor',
+    name: '移住希望者',
+    description: '村への移住を検討している人。',
+    tags: ['開放', '訪問者'],
+    effectText: '因習度+1',
+    requiredOpenness: 2,
+  },
+  {
+    id: 'vis_urban_legend_fan',
+    type: 'visitor',
+    name: '都市伝説マニア',
+    description: '心霊スポット好きの愛好家。',
+    tags: ['祟り', '訪問者'],
+    effectText: '祟り+1、因習度+1',
+    requiredOpenness: 2,
+  },
+  {
+    id: 'vis_content_creator',
+    type: 'visitor',
+    name: '配信者',
+    description: '動画配信で村を紹介する。',
+    tags: ['開放', '祟り', '訪問者'],
+    effectText: '開放度+1、祟り+1',
+    requiredOpenness: 3,
+  },
+  {
+    id: 'vis_journalist',
+    type: 'visitor',
+    name: '記者',
+    description: '新聞社から村を取材に来た記者。',
+    tags: ['開放', '知識', '訪問者'],
+    effectText: '他プレイヤー1人の目的のタグを確認できる、祟り+1',
+    requiredOpenness: 3,
+  },
+  {
+    id: 'vis_construction_worker',
+    type: 'visitor',
+    name: '土木業者',
+    description: '村の道路や施設の整備に関わる。',
+    tags: ['開放', '訪問者'],
+    effectText: '開放度+1',
+    requiredOpenness: 2,
+  },
+  {
+    id: 'vis_government_official',
+    type: 'visitor',
+    name: '行政職員',
+    description: '市町村役場の職員。',
+    tags: ['開放', '秩序', '訪問者'],
+    effectText: '祟り-2',
+    requiredOpenness: 4,
   },
 ]

@@ -1,141 +1,139 @@
-export type SacrificeVoteCandidate =
-  | { type: 'visitor'; id: string; name: string }
-  | { type: 'player'; id: string; name: string }
+// ─── グリッド定数・型 ──────────────────────────────────────────
+export const MAP_COLS = 5
+export const MAP_ROWS = 4
 
-export type Phase =
-  | 'setup'
-  | 'curseProgress'
-  | 'event'
-  | 'action'
-  | 'sacrificeVote'
-  | 'sacrificeTiebreak'
-  | 'checkEnd'
-  | 'gameEnd'
+export type Direction = 'up' | 'right' | 'down' | 'left'
 
-export type CardType = 'open' | 'tradition' | 'faith' | 'secret' | 'sacrifice' | 'event'
+// ─── カード型 ───────────────────────────────────────────────
+export type CardType = 'faith' | 'terrain' | 'facility' | 'event' | 'visitor' | 'character' | 'objective'
 
-export type ObjectiveTag = '因習' | '開放' | '祟り' | '生存死亡'
-
-export type CurseDebuffType =
-  | 'openness_decrease'
-  | 'discard_all_cards'
-
-export type CurseCard = {
+export type CardBase = {
   id: string
-  name: string
-  description: string
-  inshuPointGain: number
-  triggersSacrifice: true
-  debuffType: CurseDebuffType
-  debuffAmount: number
-  debuffDescription: string
-}
-
-export type FaithTarget = {
-  id: string
-  name: string
-  description: string
-  effects: string[]
-}
-
-export type CharacterCard = {
-  id: string
-  name: string
-  description: string
-  abilityDescription: string
-}
-
-export type ObjectiveCard = {
-  id: string
-  name: string
-  description: string
-  tags: ObjectiveTag[]
-  checkWin: (state: GameStateSnapshot) => boolean
-  immediateWin?: boolean
-}
-
-export type ActionCard = {
-  id: string
-  instanceId: string
   name: string
   type: CardType
   description: string
+  tags: string[]
+  effectText: string
 }
 
-export type EventCard = {
-  id: string
-  name: string
-  type: 'event'
-  description: string
+// ─── 信仰対象カード ───────────────────────────────────────────
+export type FaithCard = CardBase & { type: 'faith' }
+
+// ─── 地形カード ───────────────────────────────────────────────
+export type TerrainCard = CardBase & {
+  type: 'terrain'
+  connections: Direction[]
+  inshuOutput: number
+  opennessOutput: number
+  curseOutput: number
 }
 
-export type VisitorCard = {
-  id: string
-  name: string
-  effectDescription: string
-  description: string
+// ─── 施設カード ───────────────────────────────────────────────
+export type FacilityCard = CardBase & {
+  type: 'facility'
+  connectedToEntrance: boolean
+  inshuOutput: number
+  opennessOutput: number
+  curseOutput: number
 }
 
+// ─── イベントカード ───────────────────────────────────────────
+export type EventCard = CardBase & { type: 'event'; targetCardId: string | null }
+
+// ─── 来訪者カード ───────────────────────────────────────────────
+export type VisitorCard = CardBase & {
+  type: 'visitor'
+  requiredOpenness: number
+  isSacrifice?: boolean
+  stackedEventCardId?: string
+}
+
+// ─── キャラクターカード ───────────────────────────────────────
+export type PassiveEffectType = 'none' | 'roundEnd' | 'sacrifice' | 'placeCard'
+
+export type CharacterCard = CardBase & {
+  type: 'character'
+  passiveEffectText: string
+  passiveEffectType: PassiveEffectType
+}
+
+// ─── 目的カード ───────────────────────────────────────────────
+export type VictoryConditionType = 'tradition' | 'openness' | 'curseMin' | 'curseMax' | 'closedVillage' | 'balance'
+
+export type ObjectiveCard = CardBase & {
+  type: 'objective'
+  victoryConditionType: VictoryConditionType
+  victoryCondition: {
+    traditionMin?: number
+    openessMax?: number
+    curseMin?: number
+    curseMax?: number
+  }
+}
+
+// ─── グリッド上のカード ─────────────────────────────────────
+export type PlacedTerrainCard = {
+  type: 'terrain'
+  card: TerrainCard
+  disabled: boolean
+  connectedToEntrance: boolean
+  overlayEvent?: EventCard
+}
+
+export type PlacedFacilityCard = {
+  type: 'facility'
+  card: FacilityCard
+  disabled: boolean
+  connectedToEntrance: boolean
+  overlayEvent?: EventCard
+}
+
+export type PlacedFaithCard = {
+  type: 'faith'
+  card: FaithCard
+}
+
+export type PlacedCard = PlacedTerrainCard | PlacedFacilityCard | PlacedFaithCard
+
+export type VillageGrid = (PlacedCard | null)[][]
+
+// ─── プレイヤー ───────────────────────────────────────────────
 export type Player = {
   id: string
   name: string
-  character: CharacterCard | null
-  objective: ObjectiveCard | null
-  hand: ActionCard[]
-  alive: boolean
-  immediateWin: boolean
+  character: CharacterCard
+  objective: ObjectiveCard
+  hand: string[]
 }
 
-export type GameStateSnapshot = {
-  tradition: number
-  openness: number
-  curse: number
-  players: Player[]
+// ─── 村マップ ───────────────────────────────────────────────
+export type VillageMap = {
+  faithCard: FaithCard
+  faithPosition: { col: number; row: number }
+  grid: VillageGrid
 }
+
+// ─── ゲームステート ───────────────────────────────────────────
+export type GamePhase = 'roundStart' | 'playerTurn' | 'roundEnd' | 'gameEnd'
 
 export type GameState = {
-  phase: Phase
   round: number
   currentPlayerIndex: number
+  phase: GamePhase
+  settledRound: number
+  visitorAppeared: number
+  sacrificeEventTriggered: number
   tradition: number
   openness: number
   curse: number
-  faithTarget: FaithTarget | null
   players: Player[]
-  actionDeck: ActionCard[]
-  actionDiscard: ActionCard[]
-  eventDeck: EventCard[]
-  currentEvent: EventCard | null
-  visitorDeck: VisitorCard[]
-  visitorDiscard: VisitorCard[]
+  villageMap: VillageMap
   visitorRow: VisitorCard[]
-  curseDeck: CurseCard[]
-  curseDiscard: CurseCard[]
-  activeCurseCard: CurseCard | null
-  activeCurseCardSacrifice: boolean
-  skipActionsThisRound: boolean
-  skipActionsNextRound: boolean
-  log: string[]
-  winnerPlayerIds: string[]
-  endingName: string | null
-  sacrificeNeeded: boolean
-  sacrificeReturnPhase: Phase | null
-  actedPlayerIds: string[]
-  viewingObjectivePlayerId: string | null
-  curseSacrificeTriggeredThisRound: boolean
-  traditionCardPlayedThisRound: boolean
-  sacrificeVoteCandidates: SacrificeVoteCandidate[]
-  sacrificeVotes: { voterId: string; candidateId: string }[]
-  sacrificeVoteRemainingIds: string[]
-  sacrificeTiebreakerPlayerId: string | null
-  sacrificeTiedCandidateIds: string[]
-  sacrificeOriginPlayerIndex: number
-  eventTraditionBonus: number
-  eventOpennessBonus: number
-  eventCurseBonus: number
-  endOfRoundSacrificeRequired: boolean
-  endOfRoundSacrificeIfCurse: boolean
-  traditionCardEffectReduction: number
-  sacrificeCount: number
-  chuzaiNullifyPending: boolean
+  eventDeck: EventCard[]
+  visitorDeck: VisitorCard[]
+  terrainDeck: TerrainCard[]
+  facilityDeck: FacilityCard[]
+  discardedCards: string[]
+  placedThisRound: boolean[]
+  logs: Array<{ message: string }>
 }

@@ -3,11 +3,21 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import RulesModal from '@/app/components/RulesModal'
+import { createInitialState } from '@/lib/gameLogic'
 
 function generateRoomId(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
+
+const DEBUG_PLAYER_NAMES: Record<string, string> = {
+  player_1: 'デバッグP1',
+  player_2: 'デバッグP2',
+  player_3: 'デバッグP3',
+  player_4: 'デバッグP4',
+}
+const DEBUG_SLOTS = ['player_1', 'player_2', 'player_3', 'player_4']
 
 export default function LobbyPage() {
   const router = useRouter()
@@ -65,11 +75,30 @@ export default function LobbyPage() {
     router.push(`/room/${code}`)
   }
 
+  async function handleDebugStart() {
+    setLoading(true)
+    setError(null)
+    const roomId = generateRoomId()
+    const playerNamesList = Object.values(DEBUG_PLAYER_NAMES)
+    const gameState = createInitialState(playerNamesList)
+    const { error: err } = await supabase.from('game_rooms').insert({
+      id: roomId,
+      game_state: gameState,
+      player_names: DEBUG_PLAYER_NAMES,
+      connected_slots: DEBUG_SLOTS,
+    })
+    if (err) { setError(err.message); setLoading(false); return }
+    sessionStorage.setItem(`mySlot_${roomId}`, 'player_1')
+    sessionStorage.setItem(`debugMode_${roomId}`, 'true')
+    router.push(`/room/${roomId}`)
+  }
+
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center gap-8 p-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-amber-400 tracking-widest mb-2">因習村をつくろう</h1>
-        <p className="text-stone-400 text-sm">4人用オンライン対応ボードゲーム</p>
+        <p className="text-stone-400 text-sm mb-3">3〜4人用オンライン対応ボードゲーム</p>
+        <RulesModal />
       </div>
 
       <div className="w-full max-w-sm flex flex-col gap-4 bg-stone-900 rounded-xl p-6 border border-stone-700">
@@ -119,6 +148,20 @@ export default function LobbyPage() {
             {error}
           </div>
         )}
+      </div>
+
+      {/* デバッグ */}
+      <div className="w-full max-w-sm border-t border-stone-800 pt-4">
+        <button
+          onClick={handleDebugStart}
+          disabled={loading}
+          className="w-full py-2 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg transition border border-yellow-600"
+        >
+          {loading ? '処理中...' : '⚡ デバッグ開始（4人・即時）'}
+        </button>
+        <p className="text-xs text-stone-600 text-center mt-1">
+          4人分のダミープレイヤーでゲームを即座に開始します
+        </p>
       </div>
     </div>
   )
