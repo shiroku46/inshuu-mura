@@ -427,13 +427,25 @@ export default function GameRoom({ roomId }: { roomId: string }) {
           <div className="bg-stone-800 rounded-lg p-3 border border-stone-700 shadow">
             <h2 className="text-sm font-bold text-amber-400 mb-2">村マップ</h2>
 
-            {/* 村の入口 */}
-            <div className="mb-2 p-2 bg-amber-950 border border-amber-700 rounded text-center">
-              <div className="text-xs text-amber-400 font-bold">【村の入口】</div>
-            </div>
-
             {/* グリッド */}
-            <div className="border-2 border-stone-600 rounded-lg p-2 bg-stone-900 inline-block">
+            <div className="border-2 border-stone-600 rounded-lg p-2 bg-stone-900 inline-block relative">
+              {/* 村の入口インジケーター（上部） */}
+              <div className="absolute -top-6 left-0 right-0 flex justify-center">
+                <div className="flex flex-col items-center">
+                  <div className="text-sm font-bold text-amber-400">↑ 入口</div>
+                </div>
+              </div>
+              {/* グリッドの上に村入口位置インジケーター */}
+              <div className="flex gap-1 mb-1 justify-start">
+                {[0, 1, 2, 3, 4].map((col) => (
+                  <div key={col} className={`w-16 h-6 flex items-center justify-center text-sm font-bold ${
+                    col === 2 ? 'text-amber-400' : 'text-stone-600'
+                  }`}>
+                    {col === 2 ? '↓' : ''}
+                  </div>
+                ))}
+              </div>
+
               {gs.villageMap.grid.map((row, rowIdx) => (
                 <div key={rowIdx} className="flex gap-1 mb-1 last:mb-0">
                   {row.map((cell, colIdx) => {
@@ -514,6 +526,17 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     })}
                   </div>
                 ))}
+
+              {/* グリッドの下に村入口位置インジケーター */}
+              <div className="flex gap-1 mt-1 justify-start">
+                {[0, 1, 2, 3, 4].map((col) => (
+                  <div key={col} className={`w-16 h-6 flex items-center justify-center text-sm font-bold ${
+                    col === 2 ? 'text-amber-400' : 'text-stone-600'
+                  }`}>
+                    {col === 2 ? '↓ 入口' : ''}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
