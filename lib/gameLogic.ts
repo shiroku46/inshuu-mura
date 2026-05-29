@@ -54,6 +54,43 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   return false
 }
 
+export function canPlaceTerrainCardAt(state: GameState, col: number, row: number): boolean {
+  // セルが範囲内か確認
+  if (col < 0 || col >= 5 || row < 0 || row >= 4) return false
+
+  // セルが空いているか確認
+  const cell = state.villageMap.grid[row]?.[col]
+  if (cell !== null && cell !== undefined) return false
+
+  // 村の入口位置（col=2, row=3）に隣接しているか確認
+  const entranceCol = 2
+  const entranceRow = 3
+  const neighbors = [
+    { col: col - 1, row },
+    { col: col + 1, row },
+    { col, row: row - 1 },
+    { col, row: row + 1 },
+  ]
+
+  // 村の入口に隣接している場合は配置可能
+  for (const neighbor of neighbors) {
+    if (neighbor.col === entranceCol && neighbor.row === entranceRow) {
+      return true
+    }
+  }
+
+  // 隣接する接続済みの地形カードがあるか確認
+  const connectedTiles = findConnectedTiles(state)
+  for (const neighbor of neighbors) {
+    if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
+    if (connectedTiles.has(`${neighbor.col},${neighbor.row}`)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export function findConnectedTiles(state: GameState): Set<string> {
   const connected = new Set<string>()
   const queue: Array<{ col: number; row: number }> = []

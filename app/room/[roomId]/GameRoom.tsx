@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { GameState, EventCard } from '@/types/game'
-import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor } from '@/lib/gameLogic'
+import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt } from '@/lib/gameLogic'
 import { supabase } from '@/lib/supabase'
 import RulesModal from '@/app/components/RulesModal'
 import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS } from '@/data/cards'
@@ -12,6 +12,11 @@ const SLOT_LABELS: Record<string, string> = {
   player_2: 'P2',
   player_3: 'P3',
   player_4: 'P4',
+}
+
+function getConnectionArrows(directions: string[]): string {
+  const arrowMap: Record<string, string> = { up: '↑', right: '→', down: '↓', left: '←' }
+  return directions.map(d => arrowMap[d] || '?').join('')
 }
 
 async function pushState(roomId: string, newState: GameState) {
@@ -102,6 +107,15 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     if (!gs || selectedHandCardIndex === null || !mySlot) return
     const playerIndex = gs.players.findIndex((p) => p.id === mySlot)
     if (playerIndex < 0) return
+
+    // 選択カードを確認
+    const cardId = gs.players[playerIndex].hand[selectedHandCardIndex]
+    const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
+
+    // 地形カードの場合、配置可能な場所かチェック
+    if (terrain && !canPlaceTerrainCardAt(gs, col, row)) {
+      return
+    }
 
     const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row)
     setSelectedHandCardIndex(null)
@@ -427,7 +441,16 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     const isConnected = cell?.type === 'terrain' ? cell.connectedToEntrance : false
                     const isCellDisabled = cell?.type === 'terrain' || cell?.type === 'facility' ? cell.disabled : false
 
-                    const canClick = !isFaith && cell === null && selectedHandCardIndex !== null
+                    // 配置可能かチェック
+                    let canClick = !isFaith && cell === null && selectedHandCardIndex !== null
+                    if (canClick && selectedHandCardIndex !== null) {
+                      const cardId = gs.players[gs.currentPlayerIndex]?.hand[selectedHandCardIndex]
+                      const card = TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId)
+                      // 地形・施設カードは接続可能な場所にしか置けない
+                      if (card?.type === 'terrain' || card?.type === 'facility') {
+                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx)
+                      }
+                    }
 
                     return (
                       <button
@@ -476,6 +499,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           <>
                             <div className="text-xs">🌲</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>
+                            <div className="text-xs">{getConnectionArrows(cell.card.connections)}</div>
                             <div className="text-xs mt-0.5">{isCellDisabled ? '封鎖' : isConnected ? '接続' : '未接続'}</div>
                           </>
                         ) : cell?.type === 'facility' ? (
@@ -671,6 +695,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                         if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
+                        const arrows = card.type === 'terrain' ? getConnectionArrows(card.connections) : ''
                         return (
                           <button
                             key={`${player.id}-${idx}`}
@@ -682,7 +707,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                                 : `${color} border border-stone-600 text-stone-300 hover:brightness-110 disabled:opacity-50`
                             }`}
                           >
-                            {icon} {card.name}
+                            {icon} {card.name} {arrows && <span className="text-xs ml-0.5">{arrows}</span>}
                           </button>
                         )
                       })}
@@ -701,7 +726,12 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         const card = TERRAIN_CARDS.find((c) => c.id === cardId) ||
                                      FACILITY_CARDS.find((c) => c.id === cardId) ||
                                      EVENT_CARDS.find((c) => c.id === cardId)
-                        return card?.name || '？'
+                        const arrows = card?.type === 'terrain' ? getConnectionArrows(card.connections) : ''
+                        return (
+                          <>
+                            {card?.name || '？'} {arrows && <span className="ml-0.5">{arrows}</span>}
+                          </>
+                        )
                       })()}
                     </div>
                     <button
@@ -734,6 +764,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                     if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
+                    const arrows = card.type === 'terrain' ? getConnectionArrows(card.connections) : ''
+
                     return (
                       <button
                         key={idx}
@@ -745,7 +777,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                             : `${color} border border-stone-600 text-stone-300 hover:brightness-110 disabled:opacity-50`
                         }`}
                       >
-                        {icon} {card.name}
+                        {icon} {card.name} {arrows && <span className="text-xs ml-0.5">{arrows}</span>}
                       </button>
                     )
                   })}
