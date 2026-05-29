@@ -54,7 +54,7 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   return false
 }
 
-export function canPlaceTerrainCardAt(state: GameState, col: number, row: number): boolean {
+export function canPlaceTerrainCardAt(state: GameState, col: number, row: number, card: TerrainCard | FacilityCard): boolean {
   // セルが範囲内か確認
   if (col < 0 || col >= 5 || row < 0 || row >= 4) return false
 
@@ -62,9 +62,7 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
   const cell = state.villageMap.grid[row]?.[col]
   if (cell !== null && cell !== undefined) return false
 
-  // 村の入口位置（col=2, row=3）に隣接しているか確認
   const entranceCol = 2
-  const entranceRow = 3
   const neighbors = [
     { col: col - 1, row },
     { col: col + 1, row },
@@ -72,19 +70,49 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     { col, row: row + 1 },
   ]
 
-  // 村の入口に隣接している場合は配置可能
-  for (const neighbor of neighbors) {
-    if (neighbor.col === entranceCol && neighbor.row === entranceRow) {
+  // 村の入口に隣接している場合（col=2, row=3）
+  if (col === entranceCol && row === 3 && card.type === 'terrain') {
+    // 村の入口へ'down'接続しているか確認
+    if (card.connections.includes('down')) {
       return true
     }
   }
 
-  // 隣接する接続済みの地形カードがあるか確認
+  // 隣接する接続済みカードと矢印が繋がるか確認
   const connectedTiles = findConnectedTiles(state)
   for (const neighbor of neighbors) {
     if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
-    if (connectedTiles.has(`${neighbor.col},${neighbor.row}`)) {
-      return true
+
+    const neighborCell = state.villageMap.grid[neighbor.row]?.[neighbor.col]
+    if (!neighborCell) continue
+    if (neighborCell.type === 'faith') continue
+
+    // 隣接セルが接続済みか確認
+    if (!connectedTiles.has(`${neighbor.col},${neighbor.row}`)) continue
+
+    // 方向を計算
+    let dir: Direction | null = null
+    if (neighbor.col > col) dir = 'right'
+    else if (neighbor.col < col) dir = 'left'
+    else if (neighbor.row > row) dir = 'down'
+    else if (neighbor.row < row) dir = 'up'
+
+    if (!dir) continue
+
+    // 逆方向を計算
+    const oppositeDir = getOppositeDirection(dir)
+
+    // 地形・施設カードの場合
+    if (neighborCell.type === 'terrain') {
+      // 両方向に矢印があるか確認
+      if (card.type === 'terrain' && card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
+        return true
+      }
+    } else if (neighborCell.type === 'facility') {
+      // 施設カードに隣接する場合、自分が方向を持っていれば配置可能
+      if (card.type === 'terrain' && card.connections.includes(dir)) {
+        return true
+      }
     }
   }
 

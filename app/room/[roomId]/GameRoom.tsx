@@ -111,9 +111,11 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     // 選択カードを確認
     const cardId = gs.players[playerIndex].hand[selectedHandCardIndex]
     const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
+    const facility = FACILITY_CARDS.find((c) => c.id === cardId)
+    const card = terrain || facility
 
-    // 地形カードの場合、配置可能な場所かチェック
-    if (terrain && !canPlaceTerrainCardAt(gs, col, row)) {
+    // 地形・施設カードの場合、配置可能な場所かチェック
+    if (card && (card.type === 'terrain' || card.type === 'facility') && !canPlaceTerrainCardAt(gs, col, row, card)) {
       return
     }
 
@@ -443,8 +445,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                       const cardId = gs.players[gs.currentPlayerIndex]?.hand[selectedHandCardIndex]
                       const card = TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId)
                       // 地形・施設カードは接続可能な場所にしか置けない
-                      if (card?.type === 'terrain' || card?.type === 'facility') {
-                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx)
+                      if (card && (card.type === 'terrain' || card.type === 'facility')) {
+                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card)
                       }
                     }
 
