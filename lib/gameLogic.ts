@@ -78,6 +78,14 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     }
   }
 
+  // 村の入口の直上（col=2, row=2）に置く場合
+  if (col === entranceCol && row === 2 && card.type === 'terrain') {
+    // 村の入口へ接続する場合（'down'を持つか確認）
+    if (card.connections.includes('down')) {
+      return true
+    }
+  }
+
   // 隣接する接続済みカードと矢印が繋がるか確認
   const connectedTiles = findConnectedTiles(state)
   for (const neighbor of neighbors) {
