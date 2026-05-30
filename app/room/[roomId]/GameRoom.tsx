@@ -93,8 +93,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }, [roomId, debugMode])
 
   // ─ デバッグモード時の自動初期化 ────────────────────────────
+  const debugInitializedRef = useRef(false)
   useEffect(() => {
-    if (debugMode && !gs) {
+    if (debugMode && !gs && !debugInitializedRef.current) {
+      debugInitializedRef.current = true
       console.log('デバッグモード: ゲーム初期化開始')
       const randomFaithTargetId = FAITH_TARGETS[Math.floor(Math.random() * FAITH_TARGETS.length)].id
       console.log('ランダム信仰対象:', randomFaithTargetId)
@@ -102,7 +104,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
       console.log('初期状態 selectedFaithTargetId:', initialState.selectedFaithTargetId)
       setGs(initialState)
     }
-  }, [debugMode, gs])
+  }, [])
 
   // ─ リアルタイム購読 ───────────────────────────────────────
   useEffect(() => {
