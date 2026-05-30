@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { GameState, EventCard } from '@/types/game'
-import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, selectEntrance, getCardById } from '@/lib/gameLogic'
+import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, getCardById } from '@/lib/gameLogic'
 import { supabase } from '@/lib/supabase'
 import RulesModal from '@/app/components/RulesModal'
 import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS } from '@/data/cards'
@@ -127,14 +127,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
       .filter(slot => connectedSlots.includes(slot))
       .map(slot => playerNames[slot] || `Player ${slot}`)
     const newState = createInitialState(playerNamesList)
-    await pushState(roomId, newState)
-  }
-
-  async function handleSelectEntrance(col: number) {
-    if (!gs) return
-    if (gs.currentPlayerIndex !== 0) return
-    const newState = selectEntrance(gs, col)
-    if (newState === gs) return
     await pushState(roomId, newState)
   }
 
@@ -370,7 +362,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
           <div>
             <div className="text-xs text-stone-400">フェーズ</div>
             <div className="text-sm font-bold text-sky-300">
-              {gs.phase === 'selectEntrance' && '村入口選択'}
               {gs.phase === 'roundStart' && 'ラウンド開始'}
               {gs.phase === 'playerTurn' && 'プレイヤーターン'}
               {gs.phase === 'roundEnd' && 'ラウンド終了'}
@@ -472,30 +463,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
           {/* 村マップグリッド */}
           <div className="bg-stone-800 rounded-lg p-3 border border-stone-700 shadow">
             <h2 className="text-sm font-bold text-amber-400 mb-2">村マップ</h2>
-
-            {/* 村の入口選択パネル */}
-            {gs.phase === 'selectEntrance' && (
-              <div className="mb-2 p-2 bg-purple-950 border border-purple-600 rounded text-xs space-y-1.5">
-                <div className="font-bold text-purple-300">村の入口を選択</div>
-                <p className="text-purple-200 text-xs">下のグリッドで入口位置をクリック</p>
-                <div className="flex gap-1 justify-center">
-                  {[0, 1, 2, 3, 4].map((col) => (
-                    <button
-                      key={col}
-                      onClick={() => handleSelectEntrance(col)}
-                      disabled={gs.villageMap.entranceCol >= 0 || gs.currentPlayerIndex !== 0}
-                      className={`px-3 py-1.5 text-xs font-bold rounded transition ${
-                        gs.villageMap.entranceCol === col
-                          ? 'bg-purple-500 text-white'
-                          : 'bg-purple-700 hover:bg-purple-600 text-purple-200 disabled:opacity-50'
-                      }`}
-                    >
-                      列 {col}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* カード選択時の表示 */}
             {selectedHandCardIndex !== null && selectedPlayerSlot && (
@@ -615,24 +582,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                   </div>
                 ))}
 
-              {/* グリッドの下に村入口インジケーター（盤外） */}
-              <div className="flex gap-1 mt-2 justify-start items-end">
-                {[0, 1, 2, 3, 4].map((col) => {
-                  const isEntrance = col === gs.villageMap.entranceCol && gs.villageMap.entranceCol >= 0
-                  return (
-                    <div
-                      key={col}
-                      className={`w-16 transition ${
-                        isEntrance
-                          ? 'h-10 flex items-center justify-center bg-red-900 border-2 border-red-500 rounded text-red-300 font-bold text-sm'
-                          : 'h-2 bg-stone-700 rounded'
-                      }`}
-                    >
-                      {isEntrance && '⬆️ 入口'}
-                    </div>
-                  )
-                })}
-              </div>
             </div>
           </div>
         </div>

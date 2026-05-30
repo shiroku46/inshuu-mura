@@ -14,6 +14,14 @@ function getOppositeDirection(dir: Direction): Direction {
   return dir === 'up' ? 'down' : dir === 'down' ? 'up' : dir === 'left' ? 'right' : 'left'
 }
 
+function getOutsideDirection(col: number, row: number): Direction | null {
+  if (col === 0) return 'left'
+  if (col === 4) return 'right'
+  if (row === 0) return 'up'
+  if (row === 3) return 'down'
+  return null
+}
+
 function isConnected(state: GameState, col1: number, row1: number, col2: number, row2: number): boolean {
   const cell1 = state.villageMap.grid[row1]?.[col1]
   const cell2 = state.villageMap.grid[row2]?.[col2]
@@ -67,10 +75,6 @@ export function canPlaceTerrainCardAt(
   const cell = state.villageMap.grid[row]?.[col]
   if (cell !== null && cell !== undefined) return false
 
-  // 村の入口未選択時は配置不可
-  const entranceCol = state.villageMap.entranceCol
-  if (entranceCol < 0) return false
-
   const neighbors = [
     { col: col - 1, row },
     { col: col + 1, row },
@@ -80,19 +84,38 @@ export function canPlaceTerrainCardAt(
 
   const cardConnections = card.connections
 
-  // 村の入口の直上（row=3, col=entranceCol）のみに置ける
-  if (col === entranceCol && row === 3 && card.type === 'terrain') {
-    if (cardConnections.includes('down')) {
+  // 最初のカード：信仰カード以外のカードが配置されているか確認
+  const hasPlacedCards = state.villageMap.grid.some((row) =>
+    row.some((cell) => cell && cell.type !== 'faith')
+  )
+
+  if (!hasPlacedCards) {
+    // 最初のカード：外周に置けるか確認
+    const outsideDir = getOutsideDirection(col, row)
+    if (outsideDir && cardConnections.includes(outsideDir)) {
       return true
     }
+    return false
   }
 
   // 隣接する接続済みカードと矢印が繋がるか確認
   const connectedTiles = findConnectedTiles(state)
   let hasConnection = false
 
-  // 新規カードの各接続方向について、隣接セルが対応する接続を持つかチェック
-  for (const dir of cardConnections) {
+  // 外周に伸びているかチェック（複数の外周方向を確認）
+  const outsideDirs: Direction[] = []
+  if (col === 0) outsideDirs.push('left')
+  if (col === 4) outsideDirs.push('right')
+  if (row === 0) outsideDirs.push('up')
+  if (row === 3) outsideDirs.push('down')
+
+  if (outsideDirs.some(dir => cardConnections.includes(dir))) {
+    hasConnection = true
+  }
+
+  // すべての隣接方向をチェック（隣接カードの道を塞がないため）
+  const allDirections: Direction[] = ['up', 'down', 'left', 'right']
+  for (const dir of allDirections) {
     let nextCol = col
     let nextRow = row
 
@@ -123,13 +146,18 @@ export function canPlaceTerrainCardAt(
     const neighborHasConnection = neighborCell.card.connections.includes(oppositeDir)
     const newCardHasConnection = cardConnections.includes(dir)
 
-    // 新規カード側が接続している場合、隣接セルも接続している必要がある
-    if (newCardHasConnection && !neighborHasConnection) {
-      return false
-    }
     // 隣接セル側が接続している場合、新規カードも接続している必要がある
+    // これは絶対条件（外周接続でも関係なく、隣接カードの道を塞いでは禁止）
     if (neighborHasConnection && !newCardHasConnection) {
       return false
+    }
+
+    // 新規カード側が接続している場合、隣接セルも接続している必要がある
+    // ただし、その方向が外周方向の場合はこの限りでない
+    if (newCardHasConnection && !neighborHasConnection) {
+      if (!outsideDirs.includes(dir)) {
+        return false
+      }
     }
 
     // 隣接セルが接続済みなら接続している
@@ -159,19 +187,26 @@ export function findConnectedTiles(state: GameState): Set<string> {
   const connected = new Set<string>()
   const queue: Array<{ col: number; row: number }> = []
 
-  // 村の入口未選択時は接続チェックなし
-  if (state.villageMap.entranceCol < 0) {
-    return connected
-  }
+  // 外側（村外）に接続しているカードを入力点とする（複数方向対応）
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 5; col++) {
+      const cell = state.villageMap.grid[row][col]
+      if (!cell || cell.type === 'faith' || (cell as any).disabled) continue
+      if (cell.type !== 'terrain' && cell.type !== 'facility') continue
 
-  // 村の入口：下辺（row=3、col は可変）
-  const entranceCol = state.villageMap.entranceCol
-  const entranceRow = 3
-  const entranceCell = state.villageMap.grid[entranceRow]?.[entranceCol]
-  if (entranceCell && (entranceCell.type === 'terrain' || entranceCell.type === 'facility') && !entranceCell.disabled && entranceCell.card.connections.includes('down')) {
-    const key = `${entranceCol},${entranceRow}`
-    connected.add(key)
-    queue.push({ col: entranceCol, row: entranceRow })
+      // 複数の外周方向をチェック
+      const outsideDirs: Direction[] = []
+      if (col === 0) outsideDirs.push('left')
+      if (col === 4) outsideDirs.push('right')
+      if (row === 0) outsideDirs.push('up')
+      if (row === 3) outsideDirs.push('down')
+
+      if (outsideDirs.some(dir => cell.card.connections.includes(dir))) {
+        const key = `${col},${row}`
+        connected.add(key)
+        queue.push({ col, row })
+      }
+    }
   }
 
   // BFS
@@ -287,14 +322,13 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
   const villageMap: VillageMap = {
     faithCard,
     faithPosition: { col: faithCol, row: 0 },
-    entranceCol: -1,
     grid,
   }
 
   return {
     round: 1,
     currentPlayerIndex: 0,
-    phase: 'selectEntrance' as const,
+    phase: 'roundStart' as const,
     settledRound: 0,
     visitorAppeared: 0,
     sacrificeEventTriggered: 0,
@@ -311,21 +345,6 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
     discardedCards: [],
     placedThisRound: players.map(() => false),
     logs: [],
-  }
-}
-
-export function selectEntrance(state: GameState, col: number): GameState {
-  // バリデーション
-  if (state.phase !== 'selectEntrance') return state
-  if (col < 0 || col >= 5) return state
-  if (state.currentPlayerIndex !== 0) return state
-  if (state.villageMap.entranceCol >= 0) return state
-
-  // 入口を設定して roundStart フェーズへ遷移
-  return {
-    ...state,
-    villageMap: { ...state.villageMap, entranceCol: col },
-    phase: 'roundStart' as const,
   }
 }
 
