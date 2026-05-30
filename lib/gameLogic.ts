@@ -1,5 +1,5 @@
 import type { GameState, Player, VillageMap, VillageGrid, TerrainCard, FacilityCard, EventCard, MAP_COLS, MAP_ROWS, PlacedCard, Direction } from '@/types/game'
-import { CHARACTER_CARDS, OBJECTIVE_CARDS, FAITH_CARDS, EVENT_CARDS, VISITOR_CARDS, TERRAIN_DECK, FACILITY_DECK, TERRAIN_CARDS, FACILITY_CARDS } from '@/data/cards'
+import { CHARACTER_CARDS, OBJECTIVE_CARDS, FAITH_TARGETS, EVENT_CARDS, VISITOR_CARDS, TERRAIN_DECK, FACILITY_DECK, TERRAIN_CARDS, FACILITY_CARDS } from '@/data/cards'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -27,7 +27,6 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   const cell2 = state.villageMap.grid[row2]?.[col2]
 
   if (!cell1 || !cell2) return false
-  if (cell1.type === 'faith' || cell2.type === 'faith') return false
 
   // 隣接していない
   const diffCol = col2 - col1
@@ -84,9 +83,9 @@ export function canPlaceTerrainCardAt(
 
   const cardConnections = card.connections
 
-  // 最初のカード：信仰カード以外のカードが配置されているか確認
+  // 最初のカード：何らかのカードが配置されているか確認
   const hasPlacedCards = state.villageMap.grid.some((row) =>
-    row.some((cell) => cell && cell.type !== 'faith')
+    row.some((cell) => cell !== null)
   )
 
   if (!hasPlacedCards) {
@@ -96,6 +95,17 @@ export function canPlaceTerrainCardAt(
       return true
     }
     return false
+  }
+
+  // 施設カード隣接禁止ルール
+  if (card.type === 'facility') {
+    for (const neighbor of neighbors) {
+      if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
+      const neighborCell = state.villageMap.grid[neighbor.row]?.[neighbor.col]
+      if (neighborCell && neighborCell.type === 'facility') {
+        return false
+      }
+    }
   }
 
   // 隣接する接続済みカードと矢印が繋がるか確認
@@ -191,7 +201,7 @@ export function findConnectedTiles(state: GameState): Set<string> {
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 5; col++) {
       const cell = state.villageMap.grid[row][col]
-      if (!cell || cell.type === 'faith' || (cell as any).disabled) continue
+      if (!cell || (cell as any).disabled) continue
       if (cell.type !== 'terrain' && cell.type !== 'facility') continue
 
       // 複数の外周方向をチェック
@@ -246,29 +256,12 @@ function updateConnectivity(state: GameState): GameState {
       const cell = newGrid[row][col]
       if (!cell) continue
 
-      if (cell.type === 'terrain') {
-        // 地形カードの connectedToEntrance を更新
+      if (cell.type === 'terrain' || cell.type === 'facility') {
+        // 地形カード・施設カードの connectedToEntrance を更新
+        // 道のデータを持つカードは、村の外と接続しているかで判定
+        // 道のデータを持たないカードも、接続済みセットに含まれるか（隣接する接続済みセルに隣接しているか）で判定
         const isConnected = connectedTiles.has(`${col},${row}`)
         newGrid[row][col] = { ...cell, connectedToEntrance: isConnected }
-      } else if (cell.type === 'facility') {
-        // 施設カードの connectedToEntrance を更新
-        const neighbors = [
-          { col: col - 1, row },
-          { col: col + 1, row },
-          { col, row: row - 1 },
-          { col, row: row + 1 },
-        ]
-
-        let isConnectedToEntrance = false
-        for (const neighbor of neighbors) {
-          if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
-          if (connectedTiles.has(`${neighbor.col},${neighbor.row}`)) {
-            isConnectedToEntrance = true
-            break
-          }
-        }
-
-        newGrid[row][col] = { ...cell, connectedToEntrance: isConnectedToEntrance }
       }
     }
   }
@@ -279,10 +272,12 @@ function updateConnectivity(state: GameState): GameState {
   }
 }
 
-export function createInitialState(playerNames: string[] = ['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4']): GameState {
+export function createInitialState(
+  playerNames: string[] = ['プレイヤー1', 'プレイヤー2', 'プレイヤー3', 'プレイヤー4'],
+  faithTargetId: string | null = null
+): GameState {
   const shuffledChars = shuffle(CHARACTER_CARDS)
   const shuffledObjs = shuffle(OBJECTIVE_CARDS)
-  const shuffledFaith = shuffle(FAITH_CARDS)
   const shuffledEvents = shuffle(EVENT_CARDS)
   const shuffledVisitors = shuffle(VISITOR_CARDS)
   const shuffledTerrain = shuffle(TERRAIN_DECK)
@@ -312,18 +307,59 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
     }
   })
 
-  const faithCard = shuffledFaith[0]
-  const faithCol = Math.floor(Math.random() * 5) // MAP_COLS = 5
-
   // 5×4 グリッドを初期化
   const grid: VillageGrid = Array.from({ length: 4 }, () => Array(5).fill(null))
-  grid[0][faithCol] = { type: 'faith', card: faithCard }
 
-  const villageMap: VillageMap = {
-    faithCard,
-    faithPosition: { col: faithCol, row: 0 },
-    grid,
+  // 信仰対象に基づいて初期カードを配置
+  if (faithTargetId) {
+    const faithTarget = FAITH_TARGETS.find(ft => ft.id === faithTargetId)
+    if (faithTarget) {
+      const initialCard = getCardById(faithTarget.initialCardId)
+      if (initialCard && (initialCard.type === 'terrain' || initialCard.type === 'facility')) {
+        // 配置可能マスをリスト化（周囲に拡張可能なマスを優先）
+        const placeablePositions: Array<{ col: number; row: number }> = []
+
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 5; col++) {
+            if (grid[row][col] !== null) continue
+
+            // 外周に接続しているか確認
+            const outsideDirs: Direction[] = []
+            if (col === 0) outsideDirs.push('left')
+            if (col === 4) outsideDirs.push('right')
+            if (row === 0) outsideDirs.push('up')
+            if (row === 3) outsideDirs.push('down')
+
+            if (outsideDirs.some(dir => initialCard.connections.includes(dir))) {
+              placeablePositions.push({ col, row })
+            }
+          }
+        }
+
+        // ランダムに1つ選択
+        if (placeablePositions.length > 0) {
+          const randomPos = placeablePositions[Math.floor(Math.random() * placeablePositions.length)]
+          if (initialCard.type === 'terrain') {
+            grid[randomPos.row][randomPos.col] = {
+              type: 'terrain',
+              card: initialCard as TerrainCard,
+              disabled: false,
+              connectedToEntrance: true,
+            }
+          } else if (initialCard.type === 'facility') {
+            grid[randomPos.row][randomPos.col] = {
+              type: 'facility',
+              card: initialCard as FacilityCard,
+              disabled: false,
+              connectedToEntrance: true,
+            }
+          }
+        }
+      }
+    }
   }
+
+  const villageMap: VillageMap = { grid }
 
   return {
     round: 1,
@@ -337,6 +373,7 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
     curse: 0,
     players,
     villageMap,
+    selectedFaithTargetId: faithTargetId || null,
     visitorRow: [],
     eventDeck: shuffledEvents,
     visitorDeck: shuffledVisitors,
@@ -400,7 +437,6 @@ export function placeCard(
   // バリデーション
   if (col < 0 || col >= 5 || row < 0 || row >= 4) return state
   if (state.villageMap.grid[row][col] !== null) return state
-  if (col === state.villageMap.faithPosition.col && row === state.villageMap.faithPosition.row) return state
 
   // 配置制限チェック：このラウンドで既に配置済みならエラー
   if (state.placedThisRound[playerIndex]) return state
@@ -442,10 +478,7 @@ export function placeCard(
   }
 
   // 接続判定を更新
-  const stateAfterConnectivity = updateConnectivity(intermediateState)
-
-  // カード配置後、手札を5枚に補充
-  return drawCardToHand(stateAfterConnectivity, playerIndex)
+  return updateConnectivity(intermediateState)
 }
 
 export function getCardById(cardId: string): TerrainCard | FacilityCard | EventCard | null {
@@ -487,14 +520,18 @@ export function playCard(
     if (newState === state) return state
 
     // 手札から削除
-    const newPlayers = newState.players.map((p, i) => {
-      if (i === playerIndex) {
-        return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
-      }
-      return p
-    })
+    const stateAfterRemoval = {
+      ...newState,
+      players: newState.players.map((p, i) => {
+        if (i === playerIndex) {
+          return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
+        }
+        return p
+      })
+    }
 
-    return { ...newState, players: newPlayers }
+    // 手札削除後にドロー補充
+    return drawCardToHand(stateAfterRemoval, playerIndex)
   }
 
   // 施設カード
@@ -504,14 +541,18 @@ export function playCard(
     if (newState === state) return state
 
     // 手札から削除
-    const newPlayers = newState.players.map((p, i) => {
-      if (i === playerIndex) {
-        return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
-      }
-      return p
-    })
+    const stateAfterRemoval = {
+      ...newState,
+      players: newState.players.map((p, i) => {
+        if (i === playerIndex) {
+          return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
+        }
+        return p
+      })
+    }
 
-    return { ...newState, players: newPlayers }
+    // 手札削除後にドロー補充
+    return drawCardToHand(stateAfterRemoval, playerIndex)
   }
 
   // イベントカード
@@ -525,7 +566,7 @@ export function playCard(
     for (let r = 0; r < 4; r++) {
       for (let c = 0; c < 5; c++) {
         const cell = newGrid[r][c]
-        if (cell && cell.type !== 'faith' && cell.card.id === targetCardId) {
+        if (cell && cell.card.id === targetCardId) {
           (cell as any).overlayEvent = card
           found = true
           break
@@ -707,7 +748,7 @@ export function executeSettlement(state: GameState): GameState {
     ...state,
     tradition: state.tradition + output.inshu,
     openness: state.openness + output.openness,
-    curse: state.curse + output.curse,
+    curse: Math.max(0, state.curse + output.curse),
     settledRound: state.round,
     logs: [...state.logs, { message: `基本出力：因習度${output.inshu > 0 ? '+' : ''}${output.inshu}, 開放度${output.openness > 0 ? '+' : ''}${output.openness}, 祟り${output.curse > 0 ? '+' : ''}${output.curse}` }],
   }

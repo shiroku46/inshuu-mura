@@ -1,24 +1,42 @@
-import type { FaithCard, TerrainCard, FacilityCard, EventCard, VisitorCard, CharacterCard, ObjectiveCard } from '@/types/game'
+import type { TerrainCard, FacilityCard, EventCard, VisitorCard, CharacterCard, ObjectiveCard } from '@/types/game'
 
-// ─── 信仰対象カード ───────────────────────────────────────────
-export const FAITH_CARDS: FaithCard[] = [
+// ─── 信仰対象データ ───────────────────────────────────────────
+export interface FaithTarget {
+  id: string
+  name: string
+  type: string
+  initialCardId: string
+  affinityCardIds: string[]
+}
+
+export const FAITH_TARGETS: FaithTarget[] = [
   {
-    id: 'faith_mountain_god',
-    type: 'faith',
-    name: '山奥の地主神（下）',
-    description: '山奥に宿る古き神。開放が進むほど祟りも増す。',
-    tags: ['因習', '祟り'],
-    effectText: '開放度上昇時：祟り+1（上昇量分）。訪問者生贄時：因習度+1',
-    connections: ['down'],
+    id: 'mountain_god',
+    name: '山神',
+    type: '神系',
+    initialCardId: 'terrain_mountain',
+    affinityCardIds: ['facility_shrine', 'facility_small_shrine', 'terrain_mountain_path'],
   },
   {
-    id: 'faith_festival_god',
-    type: 'faith',
-    name: '祭囃子に宿るもの（下）',
-    description: '祭りの音に宿る霊。生贄の儀式を喜ぶ。',
-    tags: ['因習', '祟り', '生贄'],
-    effectText: '生贄イベント発生時：祟り+1。開放度3以上で訪問者生贄時：因習度+1',
-    connections: ['down'],
+    id: 'water_god',
+    name: '水神',
+    type: '神系',
+    initialCardId: 'terrain_lake',
+    affinityCardIds: ['facility_graveyard', 'facility_clinic', 'facility_inn'],
+  },
+  {
+    id: 'ancestral_spirits',
+    name: '祖霊',
+    type: '霊系',
+    initialCardId: 'facility_graveyard',
+    affinityCardIds: ['facility_graveyard', 'facility_village_office', 'facility_branch_school'],
+  },
+  {
+    id: 'cursed_relic',
+    name: '呪具',
+    type: '物品系',
+    initialCardId: 'facility_ritual_storehouse',
+    affinityCardIds: ['facility_shrine', 'facility_village_office', 'facility_local_museum', 'facility_small_shrine'],
   },
 ]
 
@@ -164,6 +182,8 @@ const terrainOutputs: Record<string, { inshuOutput: number; opennessOutput: numb
   terrain_t_lru: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_crossroads: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_lake: { inshuOutput: 0, opennessOutput: 0, curseOutput: 1 },
+  terrain_mountain: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  terrain_mountain_path: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
 }
 
 // ─── 地形カード ───────────────────────────────────────────────
@@ -269,6 +289,23 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
     effectText: '祟りと関連する場所として機能',
     connections: [],
   },
+  // 山系
+  {
+    id: 'terrain_mountain',
+    name: '山',
+    description: '村奥の山。古き信仰の場所。',
+    tags: ['山岳', '信仰'],
+    effectText: '因習度に影響する信仰地点',
+    connections: [],
+  },
+  {
+    id: 'terrain_mountain_path',
+    name: '山道',
+    description: '山へと向かう山道。',
+    tags: ['移動', '山岳'],
+    effectText: '山への道を形成',
+    connections: ['up', 'down'],
+  },
 ]
 
 export const TERRAIN_CARDS: TerrainCard[] = TERRAIN_CARD_DEFS.map(card => {
@@ -291,12 +328,16 @@ export const TERRAIN_DECK: TerrainCard[] = TERRAIN_CARD_DEFS.flatMap(def => {
 
 // ─── 施設カード出力値を定義 ────────────────────────────────────
 const facilityOutputs: Record<string, { inshuOutput: number; opennessOutput: number; curseOutput: number }> = {
-  facility_shrine: { inshuOutput: 2, opennessOutput: 0, curseOutput: -1 },
-  facility_old_well: { inshuOutput: 1, opennessOutput: 0, curseOutput: 1 },
-  facility_police_box: { inshuOutput: 0, opennessOutput: 2, curseOutput: 0 },
-  facility_information_center: { inshuOutput: 0, opennessOutput: 3, curseOutput: 0 },
-  facility_graveyard: { inshuOutput: 1, opennessOutput: 0, curseOutput: 1 },
-  facility_small_shrine: { inshuOutput: 2, opennessOutput: 0, curseOutput: 0 },
+  facility_shrine: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  facility_graveyard: { inshuOutput: 1, opennessOutput: 0, curseOutput: -1 },
+  facility_village_office: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
+  facility_police_box: { inshuOutput: 0, opennessOutput: 1, curseOutput: -1 },
+  facility_clinic: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
+  facility_branch_school: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
+  facility_inn: { inshuOutput: 0, opennessOutput: 2, curseOutput: 0 },
+  facility_small_shrine: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  facility_local_museum: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  facility_ritual_storehouse: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
 }
 
 // ─── 施設カード ───────────────────────────────────────────────
@@ -306,48 +347,80 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     name: '神社',
     description: '信仰の中心となる大きな神社。',
     tags: ['信仰', '中心'],
-    effectText: '（将来実装：信仰関連の効果）',
-    connections: ['up', 'down'],
-  },
-  {
-    id: 'facility_old_well',
-    name: '古井戸',
-    description: '村の古い井戸。祟りの源？',
-    tags: ['祟り', '秘密'],
-    effectText: '（将来実装：祟り関連の効果）',
-    connections: [],
-  },
-  {
-    id: 'facility_police_box',
-    name: '駐在所',
-    description: '警察の詰所。秩序を守る場所。',
-    tags: ['開放', '秩序'],
-    effectText: '（将来実装：開放度関連の効果）',
-    connections: ['up', 'right'],
-  },
-  {
-    id: 'facility_information_center',
-    name: '観光案内所',
-    description: '村の観光情報を発信する場所。',
-    tags: ['開放', '訪問者'],
-    effectText: '（将来実装：訪問者・開放度関連の効果）',
-    connections: ['left', 'right'],
+    effectText: 'ラウンド終了時：因習度+1',
+    connections: ['up'],
   },
   {
     id: 'facility_graveyard',
     name: '墓地',
     description: '村の古い歴史を埋葬する場所。',
     tags: ['因習', '祟り'],
-    effectText: '（将来実装：因習・祟り関連の効果）',
-    connections: [],
+    effectText: 'ラウンド終了時：因習度+1、祟り-1',
+    connections: ['down'],
+  },
+  {
+    id: 'facility_village_office',
+    name: '村役場',
+    description: '村政を司る中心施設。',
+    tags: ['開放', '行政'],
+    effectText: 'ラウンド終了時：開放度+1',
+    connections: ['right', 'down'],
+  },
+  {
+    id: 'facility_police_box',
+    name: '駐在所',
+    description: '警察の詰所。秩序を守る場所。',
+    tags: ['開放', '秩序'],
+    effectText: 'ラウンド終了時：開放度+1、祟り-1',
+    connections: ['left', 'down'],
+  },
+  {
+    id: 'facility_clinic',
+    name: '診療所',
+    description: '村民の健康を守る診療所。',
+    tags: ['開放', '医療'],
+    effectText: 'ラウンド終了時：開放度+1',
+    connections: ['right', 'up'],
+  },
+  {
+    id: 'facility_branch_school',
+    name: '分校',
+    description: '村の子どもたちが学ぶ学校。',
+    tags: ['開放', '教育'],
+    effectText: 'ラウンド終了時：開放度+1',
+    connections: ['left', 'up'],
+  },
+  {
+    id: 'facility_inn',
+    name: '旅館',
+    description: '旅人を泊める旅館。村外との交流点。',
+    tags: ['開放', '交流'],
+    effectText: 'ラウンド終了時：開放度+2',
+    connections: ['up', 'left', 'right'],
   },
   {
     id: 'facility_small_shrine',
     name: '祠',
     description: '小さな祠。信仰の拠点。',
     tags: ['信仰'],
-    effectText: '（将来実装：信仰関連の効果）',
+    effectText: 'ラウンド終了時：因習度+1',
     connections: ['up', 'down'],
+  },
+  {
+    id: 'facility_local_museum',
+    name: '郷土資料館',
+    description: '村の歴史と文化を保存する施設。',
+    tags: ['因習', '文化'],
+    effectText: 'ラウンド終了時：因習度+1',
+    connections: ['left', 'right'],
+  },
+  {
+    id: 'facility_ritual_storehouse',
+    name: '祭具殿',
+    description: '祭具や呪物を保管する場所。',
+    tags: ['信仰', '呪具'],
+    effectText: 'ラウンド終了時：因習度+1',
+    connections: ['down'],
   },
 ]
 

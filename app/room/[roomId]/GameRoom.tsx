@@ -500,12 +500,11 @@ export default function GameRoom({ roomId }: { roomId: string }) {
               {gs.villageMap.grid.map((row, rowIdx) => (
                 <div key={rowIdx} className="flex gap-1 mb-1 last:mb-0">
                   {row.map((cell, colIdx) => {
-                    const isFaith = colIdx === gs.villageMap.faithPosition.col && rowIdx === gs.villageMap.faithPosition.row
                     const isConnected = cell?.type === 'terrain' ? cell.connectedToEntrance : false
                     const isCellDisabled = cell?.type === 'terrain' || cell?.type === 'facility' ? cell.disabled : false
 
                     // 配置可能かチェック
-                    let canClick = !isFaith && cell === null && selectedHandCardIndex !== null && gs.phase === 'playerTurn' && selectedPlayerSlot && selectedPlayerSlot === gs.players[gs.currentPlayerIndex]?.id
+                    let canClick = cell === null && selectedHandCardIndex !== null && gs.phase === 'playerTurn' && selectedPlayerSlot && selectedPlayerSlot === gs.players[gs.currentPlayerIndex]?.id
                     if (canClick && selectedHandCardIndex !== null && selectedPlayerSlot) {
                       const selectedPlayerIdx = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
                       const cardId = selectedPlayerIdx >= 0 ? gs.players[selectedPlayerIdx]?.hand[selectedHandCardIndex] : null
@@ -520,15 +519,13 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                       <button
                         key={`${colIdx}-${rowIdx}`}
                         onClick={() => {
-                          if (!isFaith && selectedHandCardIndex !== null) {
+                          if (selectedHandCardIndex !== null) {
                             handlePlayHandCard(colIdx, rowIdx)
                           }
                         }}
                         disabled={!canClick}
                         className={`w-16 h-16 rounded border-2 text-center text-xs font-bold transition flex flex-col items-center justify-center ${
-                          isFaith
-                            ? 'border-purple-600 bg-purple-950 text-purple-300 cursor-default'
-                            : isCellDisabled
+                          isCellDisabled
                             ? 'border-gray-600 bg-gray-800 text-gray-500 cursor-default'
                             : cell?.type === 'terrain'
                             ? isConnected
@@ -556,12 +553,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                             : ''
                         }
                       >
-                        {isFaith ? (
-                          <>
-                            <div className="text-xs">⛩️</div>
-                            <div className="text-xs font-semibold">{gs.villageMap.faithCard.name}</div>
-                          </>
-                        ) : cell?.type === 'terrain' ? (
+                        {cell?.type === 'terrain' ? (
                           <>
                             <div className="text-xs">🌲</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>

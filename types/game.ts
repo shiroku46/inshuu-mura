@@ -5,7 +5,7 @@ export const MAP_ROWS = 4
 export type Direction = 'up' | 'right' | 'down' | 'left'
 
 // ─── カード型 ───────────────────────────────────────────────
-export type CardType = 'faith' | 'terrain' | 'facility' | 'event' | 'visitor' | 'character' | 'objective'
+export type CardType = 'terrain' | 'facility' | 'event' | 'visitor' | 'character' | 'objective'
 
 export type CardBase = {
   id: string
@@ -14,12 +14,6 @@ export type CardBase = {
   description: string
   tags: string[]
   effectText: string
-}
-
-// ─── 信仰対象カード ───────────────────────────────────────────
-export type FaithCard = CardBase & {
-  type: 'faith'
-  connections: Direction[]
 }
 
 // ─── 地形カード ───────────────────────────────────────────────
@@ -92,12 +86,7 @@ export type PlacedFacilityCard = {
   overlayEvent?: EventCard
 }
 
-export type PlacedFaithCard = {
-  type: 'faith'
-  card: FaithCard
-}
-
-export type PlacedCard = PlacedTerrainCard | PlacedFacilityCard | PlacedFaithCard
+export type PlacedCard = PlacedTerrainCard | PlacedFacilityCard
 
 export type VillageGrid = (PlacedCard | null)[][]
 
@@ -112,8 +101,6 @@ export type Player = {
 
 // ─── 村マップ ───────────────────────────────────────────────
 export type VillageMap = {
-  faithCard: FaithCard
-  faithPosition: { col: number; row: number }
   grid: VillageGrid
 }
 
@@ -132,6 +119,7 @@ export type GameState = {
   curse: number
   players: Player[]
   villageMap: VillageMap
+  selectedFaithTargetId: string | null
   visitorRow: VisitorCard[]
   eventDeck: EventCard[]
   visitorDeck: VisitorCard[]
