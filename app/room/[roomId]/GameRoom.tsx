@@ -34,8 +34,8 @@ function getConnectionSymbol(connections: string[]): string {
   // 2本線（角）
   if (has.up && has.right) return '└'
   if (has.up && has.left) return '┘'
-  if (has.down && has.right) return '┐'
-  if (has.down && has.left) return '┌'
+  if (has.down && has.right) return '┌'
+  if (has.down && has.left) return '┐'
 
   // 1本線
   if (has.up || has.down) return '│'
