@@ -96,8 +96,8 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     if (!neighborCell) continue
     if (neighborCell.type === 'faith') continue
 
-    // 隣接セルが接続済みか確認
-    if (!connectedTiles.has(`${neighbor.col},${neighbor.row}`)) continue
+    // 隣接セルが接続済みか確認（接続済みでなくても矢印で繋がれば置ける）
+    const isNeighborConnected = connectedTiles.has(`${neighbor.col},${neighbor.row}`)
 
     // 方向を計算
     let dir: Direction | null = null
@@ -111,15 +111,25 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     // 逆方向を計算
     const oppositeDir = getOppositeDirection(dir)
 
-    // 地形・施設カードの場合
-    if (neighborCell.type === 'terrain') {
-      // 両方向に矢印があるか確認
-      if (card.type === 'terrain' && card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
-        return true
+    // 隣接セルが接続済みの場合
+    if (isNeighborConnected) {
+      // 地形・施設カードの場合
+      if (neighborCell.type === 'terrain') {
+        // 両方向に矢印があるか確認
+        if (card.type === 'terrain' && card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
+          return true
+        }
+      } else if (neighborCell.type === 'facility') {
+        // 施設カードに隣接する場合、自分が方向を持っていれば配置可能
+        if (card.type === 'terrain' && card.connections.includes(dir)) {
+          return true
+        }
       }
-    } else if (neighborCell.type === 'facility') {
-      // 施設カードに隣接する場合、自分が方向を持っていれば配置可能
-      if (card.type === 'terrain' && card.connections.includes(dir)) {
+    }
+
+    // 隣接セルが接続済みでなくても、矢印が繋がる地形カードがあれば置ける
+    if (neighborCell.type === 'terrain' && card.type === 'terrain') {
+      if (card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
         return true
       }
     }
