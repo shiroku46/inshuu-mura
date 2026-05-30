@@ -5,7 +5,7 @@ export const FAITH_CARDS: FaithCard[] = [
   {
     id: 'faith_mountain_god',
     type: 'faith',
-    name: '山奥の地主神',
+    name: '山奥の地主神（下）',
     description: '山奥に宿る古き神。開放が進むほど祟りも増す。',
     tags: ['因習', '祟り'],
     effectText: '開放度上昇時：祟り+1（上昇量分）。訪問者生贄時：因習度+1',
@@ -14,7 +14,7 @@ export const FAITH_CARDS: FaithCard[] = [
   {
     id: 'faith_festival_god',
     type: 'faith',
-    name: '祭囃子に宿るもの',
+    name: '祭囃子に宿るもの（下）',
     description: '祭りの音に宿る霊。生贄の儀式を喜ぶ。',
     tags: ['因習', '祟り', '生贄'],
     effectText: '生贄イベント発生時：祟り+1。開放度3以上で訪問者生贄時：因習度+1',
