@@ -221,7 +221,7 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
   // T字路（4方向：閉じている方向で表記）
   {
     id: 'terrain_t_udr',
-    name: 'T字路（上下右）',
+    name: 'T字路（左）',
     description: '上・下・右に向かう3方向の分岐。左が閉じている。',
     tags: ['移動', '分岐'],
     effectText: '3つの方向に接続可能',
@@ -229,7 +229,7 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
   },
   {
     id: 'terrain_t_udl',
-    name: 'T字路（上下左）',
+    name: 'T字路（右）',
     description: '上・下・左に向かう3方向の分岐。右が閉じている。',
     tags: ['移動', '分岐'],
     effectText: '3つの方向に接続可能',
@@ -237,7 +237,7 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
   },
   {
     id: 'terrain_t_lrd',
-    name: 'T字路（左右下）',
+    name: 'T字路（上）',
     description: '左・右・下に向かう3方向の分岐。上が閉じている。',
     tags: ['移動', '分岐'],
     effectText: '3つの方向に接続可能',
@@ -245,7 +245,7 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
   },
   {
     id: 'terrain_t_lru',
-    name: 'T字路（左右上）',
+    name: 'T字路（下）',
     description: '左・右・上に向かう3方向の分岐。下が閉じている。',
     tags: ['移動', '分岐'],
     effectText: '3つの方向に接続可能',
