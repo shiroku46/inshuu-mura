@@ -84,12 +84,13 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
       setConnectedSlots(data.connected_slots ?? [])
       setPlayerNames(data.player_names ?? {})
-      if (data.game_state) {
+      // デバッグモード時は game_state を読み込まない（デバッグモード useEffect で初期化する）
+      if (data.game_state && !debugMode) {
         setGs(data.game_state)
       }
     }
     load()
-  }, [roomId])
+  }, [roomId, debugMode])
 
   // ─ デバッグモード時の自動初期化 ────────────────────────────
   useEffect(() => {
