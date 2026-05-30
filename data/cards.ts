@@ -348,7 +348,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '信仰の中心となる大きな神社。',
     tags: ['信仰', '中心'],
     effectText: 'ラウンド終了時：因習度+1',
-    connections: ['up'],
+    connections: ['down'],
   },
   {
     id: 'facility_graveyard',
