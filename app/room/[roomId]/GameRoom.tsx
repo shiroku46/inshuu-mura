@@ -88,6 +88,15 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     load()
   }, [roomId])
 
+  // ─ デバッグモード時の自動初期化 ────────────────────────────
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' && !gs) {
+      const randomFaithTargetId = FAITH_TARGETS[Math.floor(Math.random() * FAITH_TARGETS.length)].id
+      const initialState = createInitialState(['デバッグP1', 'デバッグP2', 'デバッグP3', 'デバッグP4'], randomFaithTargetId)
+      setGs(initialState)
+    }
+  }, [gs])
+
   // ─ リアルタイム購読 ───────────────────────────────────────
   useEffect(() => {
     const channel = supabase
@@ -120,6 +129,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   // ─ 権限チェック ──────────────────────────────────────────
   const isHost = mySlot === 'player_1'
+  const debugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
 
   async function handleStart() {
     if (!isHost) return
@@ -128,7 +138,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
       .map(slot => playerNames[slot] || `Player ${slot}`)
     // ランダムに信仰対象を選択
     const randomFaithTargetId = FAITH_TARGETS[Math.floor(Math.random() * FAITH_TARGETS.length)].id
+    console.log('Selected Faith Target ID:', randomFaithTargetId)
+    console.log('FAITH_TARGETS:', FAITH_TARGETS)
     const newState = createInitialState(playerNamesList, randomFaithTargetId)
+    console.log('New State selectedFaithTargetId:', newState.selectedFaithTargetId)
     await pushState(roomId, newState)
   }
 
@@ -249,7 +262,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }
 
   // ─ ロビー画面（ゲーム未開始） ─────────────────────────────
-  if (!gs) {
+  if (!gs && !debugMode) {
     return (
       <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center gap-6 p-6">
         <h1 className="text-2xl font-bold text-amber-400 tracking-widest">因習村をつくろう</h1>
@@ -324,7 +337,14 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }
 
   // ─ ゲーム画面 ─────────────────────────────────────────────
-  const debugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
+  if (!gs) {
+    return (
+      <div className="min-h-screen bg-stone-950 text-stone-100 flex items-center justify-center">
+        <div className="text-center text-stone-400">ゲームを初期化中...</div>
+      </div>
+    )
+  }
+
   const myPlayer = gs.players.find((p) => p.id === mySlot)
   const currentPlayer = gs.players[gs.currentPlayerIndex]
   const isMyTurn = (myPlayer && myPlayer.id === currentPlayer.id && gs.phase === 'playerTurn') || debugMode
