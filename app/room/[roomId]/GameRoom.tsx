@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { GameState, EventCard } from '@/types/game'
-import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt } from '@/lib/gameLogic'
+import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, getRotatedConnections } from '@/lib/gameLogic'
 import { supabase } from '@/lib/supabase'
 import RulesModal from '@/app/components/RulesModal'
 import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS } from '@/data/cards'
@@ -59,6 +59,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [roomNotFound, setRoomNotFound] = useState(false)
   const [selectedHandCardIndex, setSelectedHandCardIndex] = useState<number | null>(null)
   const [selectedPlayerSlot, setSelectedPlayerSlot] = useState<string | null>(null)
+  const [selectedCardRotation, setSelectedCardRotation] = useState<0 | 1 | 2 | 3>(0)
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
 
@@ -117,6 +118,17 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     }
   }, [roomId])
 
+  // ─ キーボード操作：R キーで回転 ──────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'r' && selectedHandCardIndex !== null) {
+        setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedHandCardIndex])
+
   // ─ 権限チェック ──────────────────────────────────────────
   const isHost = mySlot === 'player_1'
 
@@ -151,13 +163,14 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const card = terrain || facility
 
     // 地形・施設カードの場合、配置可能な場所かチェック
-    if (card && (card.type === 'terrain' || card.type === 'facility') && !canPlaceTerrainCardAt(gs, col, row, card)) {
+    if (card && (card.type === 'terrain' || card.type === 'facility') && !canPlaceTerrainCardAt(gs, col, row, card, selectedCardRotation)) {
       return
     }
 
-    const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row)
+    const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row, undefined, selectedCardRotation)
     setSelectedHandCardIndex(null)
     setSelectedPlayerSlot(null)
+    setSelectedCardRotation(0)
     await pushState(roomId, newState)
   }
 
@@ -498,7 +511,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                       const card = cardId ? TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId) : null
                       // 地形・施設カードは接続可能な場所にしか置けない
                       if (card && (card.type === 'terrain' || card.type === 'facility')) {
-                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card)
+                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card, selectedCardRotation)
                       }
                     }
 
@@ -551,7 +564,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           <>
                             <div className="text-xs">🌲</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>
-                            <div className="text-xs">{getConnectionSymbol(cell.card.connections)}</div>
+                            <div className="text-xs">{getConnectionSymbol(getRotatedConnections(cell.card.connections, cell.rotation))}</div>
+                            <div className="text-xs text-stone-400">{cell.rotation * 90}°</div>
                             <div className="text-xs mt-0.5">{isCellDisabled ? '封鎖' : isConnected ? '接続' : '未接続'}</div>
                           </>
                         ) : cell?.type === 'facility' ? (
@@ -843,6 +857,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           if (canSelectCard) {
                             setSelectedHandCardIndex(idx)
                             setSelectedPlayerSlot(mySlot)
+                            setSelectedCardRotation(0)
                           }
                         }}
                         disabled={!canSelectCard}
@@ -858,6 +873,46 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                   })}
                 </div>
               </>
+            )}
+
+            {/* カード選択時の回転パネル */}
+            {selectedHandCardIndex !== null && myPlayer && (
+              <div className="mb-2 p-2 bg-blue-950 border border-blue-600 rounded text-xs space-y-1.5">
+                {(() => {
+                  const cardId = myPlayer.hand[selectedHandCardIndex]
+                  const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
+                  const card = terrain
+                  if (!card) return null
+
+                  const rotatedConnections = terrain ? getRotatedConnections(terrain.connections, selectedCardRotation) : []
+                  const previewSymbol = getConnectionSymbol(rotatedConnections)
+
+                  return (
+                    <>
+                      <div className="font-bold text-blue-300">{card.name}</div>
+                      <div className="flex gap-1.5 items-center">
+                        <button
+                          onClick={() => setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)}
+                          className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded"
+                        >
+                          ↻ 回転
+                        </button>
+                        <div className="text-blue-300 font-bold">{selectedCardRotation * 90}°</div>
+                      </div>
+                      <div className="text-xs text-blue-200">プレビュー: {previewSymbol}</div>
+                      <button
+                        onClick={() => {
+                          setSelectedHandCardIndex(null)
+                          setSelectedCardRotation(0)
+                        }}
+                        className="w-full px-2 py-0.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded"
+                      >
+                        解除
+                      </button>
+                    </>
+                  )
+                })()}
+              </div>
             )}
 
             {/* 配置完了時のターン終了ボタン */}

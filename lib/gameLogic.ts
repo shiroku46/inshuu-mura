@@ -14,6 +14,21 @@ function getOppositeDirection(dir: Direction): Direction {
   return dir === 'up' ? 'down' : dir === 'down' ? 'up' : dir === 'left' ? 'right' : 'left'
 }
 
+export function getRotatedConnections(
+  baseConnections: Direction[],
+  rotationCount: 0 | 1 | 2 | 3
+): Direction[] {
+  const directionMap = {
+    0: { up: 'up' as const, right: 'right' as const, down: 'down' as const, left: 'left' as const },
+    1: { up: 'right' as const, right: 'down' as const, down: 'left' as const, left: 'up' as const },
+    2: { up: 'down' as const, right: 'left' as const, down: 'up' as const, left: 'right' as const },
+    3: { up: 'left' as const, right: 'up' as const, down: 'right' as const, left: 'down' as const },
+  }
+  const rotation = (rotationCount % 4) as 0 | 1 | 2 | 3
+  const mapping = directionMap[rotation]
+  return baseConnections.map(dir => mapping[dir as Direction])
+}
+
 function isConnected(state: GameState, col1: number, row1: number, col2: number, row2: number): boolean {
   const cell1 = state.villageMap.grid[row1]?.[col1]
   const cell2 = state.villageMap.grid[row2]?.[col2]
@@ -40,12 +55,14 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   // cell1は地形カード
   if (cell1.type !== 'terrain') return false
   if ((cell1 as any).disabled) return false
-  if (!cell1.card.connections.includes(dir1)) return false
+  const connections1 = getRotatedConnections(cell1.card.connections, cell1.rotation)
+  if (!connections1.includes(dir1)) return false
 
   // cell2は地形または施設カード
   if (cell2.type === 'terrain') {
     if ((cell2 as any).disabled) return false
-    return cell2.card.connections.includes(dir2)
+    const connections2 = getRotatedConnections(cell2.card.connections, cell2.rotation)
+    return connections2.includes(dir2)
   } else if (cell2.type === 'facility') {
     // 施設カードは接続方向を持たないので、単に隣接していれば「接続可能」とする
     return true
@@ -54,7 +71,13 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   return false
 }
 
-export function canPlaceTerrainCardAt(state: GameState, col: number, row: number, card: TerrainCard | FacilityCard): boolean {
+export function canPlaceTerrainCardAt(
+  state: GameState,
+  col: number,
+  row: number,
+  card: TerrainCard | FacilityCard,
+  rotation: 0 | 1 | 2 | 3 = 0
+): boolean {
   // セルが範囲内か確認
   if (col < 0 || col >= 5 || row < 0 || row >= 4) return false
 
@@ -70,11 +93,13 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     { col, row: row + 1 },
   ]
 
+  const cardConnections = card.type === 'terrain' ? getRotatedConnections(card.connections, rotation) : []
+
   // 村の入口に隣接している場合（col=2, row=3または上下の一段のみ）
   if (col === entranceCol && row >= 2 && row <= 3 && card.type === 'terrain') {
     // row=3: 村の入口へ'down'接続
     // row=2: 村の入口へ'down'接続
-    if (card.connections.includes('down')) {
+    if (cardConnections.includes('down')) {
       return true
     }
   }
@@ -82,7 +107,7 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
   // 村の入口に左右で接続する場合（row=3の左右）
   if (row === 3 && (col === 1 || col === 3) && card.type === 'terrain') {
     const dir = col === 1 ? 'right' : 'left'
-    if (card.connections.includes(dir)) {
+    if (cardConnections.includes(dir)) {
       return true
     }
   }
@@ -116,12 +141,15 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
       // 地形・施設カードの場合
       if (neighborCell.type === 'terrain') {
         // 両方向に矢印があるか確認
-        if (card.type === 'terrain' && card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
-          return true
+        if (card.type === 'terrain') {
+          const neighborConnections = getRotatedConnections(neighborCell.card.connections, neighborCell.rotation)
+          if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
+            return true
+          }
         }
       } else if (neighborCell.type === 'facility') {
         // 施設カードに隣接する場合、自分が方向を持っていれば配置可能
-        if (card.type === 'terrain' && card.connections.includes(dir)) {
+        if (card.type === 'terrain' && cardConnections.includes(dir)) {
           return true
         }
       }
@@ -129,7 +157,8 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
 
     // 隣接セルが接続済みでなくても、矢印が繋がる地形カードがあれば置ける
     if (neighborCell.type === 'terrain' && card.type === 'terrain') {
-      if (card.connections.includes(dir) && neighborCell.card.connections.includes(oppositeDir)) {
+      const neighborConnections = getRotatedConnections(neighborCell.card.connections, neighborCell.rotation)
+      if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
         return true
       }
     }
@@ -296,6 +325,7 @@ export function placeCard(
   col: number,
   row: number,
   card: TerrainCard | FacilityCard,
+  rotation: 0 | 1 | 2 | 3 = 0,
   playerIndex: number = state.currentPlayerIndex
 ): GameState {
   // バリデーション
@@ -309,9 +339,9 @@ export function placeCard(
   // グリッドを更新
   const newGrid = state.villageMap.grid.map((r) => [...r])
   if (card.type === 'terrain') {
-    newGrid[row][col] = { type: 'terrain', card, disabled: false, connectedToEntrance: false }
+    newGrid[row][col] = { type: 'terrain', card, rotation, disabled: false, connectedToEntrance: false }
   } else if (card.type === 'facility') {
-    newGrid[row][col] = { type: 'facility', card, disabled: false, connectedToEntrance: false }
+    newGrid[row][col] = { type: 'facility', card, rotation, disabled: false, connectedToEntrance: false }
   }
 
   // デッキから消費
@@ -368,7 +398,8 @@ export function playCard(
   cardIndex: number,
   col?: number,
   row?: number,
-  targetCardId?: string
+  targetCardId?: string,
+  rotation: 0 | 1 | 2 | 3 = 0
 ): GameState {
   if (playerIndex < 0 || playerIndex >= state.players.length) return state
   const player = state.players[playerIndex]
@@ -381,7 +412,7 @@ export function playCard(
   // 地形カード
   if (card.type === 'terrain') {
     if (col === undefined || row === undefined) return state
-    const newState = placeCard(state, col, row, card)
+    const newState = placeCard(state, col, row, card, rotation)
     if (newState === state) return state
 
     // 手札から削除
@@ -398,7 +429,7 @@ export function playCard(
   // 施設カード
   if (card.type === 'facility') {
     if (col === undefined || row === undefined) return state
-    const newState = placeCard(state, col, row, card)
+    const newState = placeCard(state, col, row, card, rotation)
     if (newState === state) return state
 
     // 手札から削除
