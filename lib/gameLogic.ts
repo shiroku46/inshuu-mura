@@ -111,25 +111,15 @@ export function canPlaceTerrainCardAt(
     // 逆方向を計算
     const oppositeDir = getOppositeDirection(dir)
 
-    // 隣接セルが接続済みの場合
+    // 隣接セルが接続済みの場合のみ配置可能
     if (isNeighborConnected) {
-      // 地形・施設カードの場合
-      if (neighborCell.type === 'terrain') {
-        // 両方向に矢印があるか確認
-        if (card.type === 'terrain') {
-          const neighborConnections = neighborCell.card.connections
-          if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
-            return true
-          }
-        }
-      } else if (neighborCell.type === 'facility') {
+      if (neighborCell.type === 'terrain' || neighborCell.type === 'facility') {
         const neighborConnections = neighborCell.card.connections
         if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
           return true
         }
       }
     }
-
   }
 
   return false
