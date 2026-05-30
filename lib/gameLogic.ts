@@ -37,8 +37,8 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   // cell1が dir1 方向に接続しているか、cell2がその逆方向に接続しているかチェック
   const dir2 = getOppositeDirection(dir1)
 
-  // cell1は地形カード
-  if (cell1.type !== 'terrain') return false
+  // cell1は地形または施設カード
+  if (cell1.type !== 'terrain' && cell1.type !== 'facility') return false
   if ((cell1 as any).disabled) return false
   if (!cell1.card.connections.includes(dir1)) return false
 
