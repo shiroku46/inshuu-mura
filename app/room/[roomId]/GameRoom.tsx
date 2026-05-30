@@ -14,9 +14,34 @@ const SLOT_LABELS: Record<string, string> = {
   player_4: 'P4',
 }
 
-function getConnectionArrows(directions: string[]): string {
-  const arrowMap: Record<string, string> = { up: '↑', right: '→', down: '↓', left: '←' }
-  return directions.map(d => arrowMap[d] || '?').join('')
+function getConnectionSymbol(connections: string[]): string {
+  const has = {
+    up: connections.includes('up'),
+    down: connections.includes('down'),
+    left: connections.includes('left'),
+    right: connections.includes('right'),
+  }
+
+  // 十字路
+  if (has.up && has.down && has.left && has.right) return '┼'
+
+  // 3本線
+  if (has.down && has.left && has.right) return '┬'
+  if (has.up && has.left && has.right) return '┴'
+  if (has.up && has.down && has.right) return '├'
+  if (has.up && has.down && has.left) return '┤'
+
+  // 2本線（角）
+  if (has.up && has.right) return '└'
+  if (has.up && has.left) return '┘'
+  if (has.down && has.right) return '┐'
+  if (has.down && has.left) return '┌'
+
+  // 1本線
+  if (has.up || has.down) return '│'
+  if (has.left || has.right) return '─'
+
+  return ' '
 }
 
 async function pushState(roomId: string, newState: GameState) {
@@ -511,7 +536,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           <>
                             <div className="text-xs">🌲</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>
-                            <div className="text-xs">{getConnectionArrows(cell.card.connections)}</div>
+                            <div className="text-xs">{getConnectionSymbol(cell.card.connections)}</div>
                             <div className="text-xs mt-0.5">{isCellDisabled ? '封鎖' : isConnected ? '接続' : '未接続'}</div>
                           </>
                         ) : cell?.type === 'facility' ? (
@@ -718,7 +743,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                         if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
-                        const arrows = card.type === 'terrain' ? getConnectionArrows(card.connections) : ''
+                        const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
                         return (
                           <button
                             key={`${player.id}-${idx}`}
@@ -749,7 +774,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         const card = TERRAIN_CARDS.find((c) => c.id === cardId) ||
                                      FACILITY_CARDS.find((c) => c.id === cardId) ||
                                      EVENT_CARDS.find((c) => c.id === cardId)
-                        const arrows = card?.type === 'terrain' ? getConnectionArrows(card.connections) : ''
+                        const arrows = card?.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
                         return (
                           <>
                             {card?.name || '？'} {arrows && <span className="ml-0.5">{arrows}</span>}
@@ -787,7 +812,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                     if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
-                    const arrows = card.type === 'terrain' ? getConnectionArrows(card.connections) : ''
+                    const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
 
                     return (
                       <button
