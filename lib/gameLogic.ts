@@ -70,18 +70,19 @@ export function canPlaceTerrainCardAt(state: GameState, col: number, row: number
     { col, row: row + 1 },
   ]
 
-  // 村の入口に隣接している場合（col=2, row=3）
-  if (col === entranceCol && row === 3 && card.type === 'terrain') {
-    // 村の入口へ'down'接続しているか確認
+  // 村の入口に隣接している場合（col=2, row=3または上下の一段のみ）
+  if (col === entranceCol && row >= 2 && row <= 3 && card.type === 'terrain') {
+    // row=3: 村の入口へ'down'接続
+    // row=2: 村の入口へ'down'接続
     if (card.connections.includes('down')) {
       return true
     }
   }
 
-  // 村の入口の直上（col=2, row=2）に置く場合
-  if (col === entranceCol && row === 2 && card.type === 'terrain') {
-    // 村の入口へ接続する場合（'down'を持つか確認）
-    if (card.connections.includes('down')) {
+  // 村の入口に左右で接続する場合（row=3の左右）
+  if (row === 3 && (col === 1 || col === 3) && card.type === 'terrain') {
+    const dir = col === 1 ? 'right' : 'left'
+    if (card.connections.includes(dir)) {
       return true
     }
   }
