@@ -152,11 +152,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }
 
   async function handleStartRoundOrTurn() {
-    if (!gs) return
-    if (gs.phase === 'roundStart') {
-      const newState = startPlayerTurn(gs)
-      await pushState(roomId, newState)
-    }
+    // ラウンド開始ボタン押下時は何もしない
+    // useEffect で自動的に遷移する
   }
 
   async function handleStartNextRound() {
@@ -196,6 +193,23 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   async function copyRoomId() {
     await navigator.clipboard.writeText(roomId)
   }
+
+  // ─ ラウンド開始フロー：生贄イベント完了後に自動進行 ───────────
+  useEffect(() => {
+    if (!gs || gs.phase !== 'roundStart') return
+
+    const shouldTrigger = shouldTriggerSacrificeEvent(gs)
+    const hasTriggered = gs.sacrificeEventTriggered === gs.round
+
+    // 生贄イベントが発動しない、または既に処理済み
+    if (!shouldTrigger || hasTriggered) {
+      // 訪問者が登場済みで、自動的にプレイヤーターンに遷移
+      if (gs.visitorAppeared === gs.round && isHost) {
+        const newState = startPlayerTurn(gs)
+        pushState(roomId, newState)
+      }
+    }
+  }, [gs, isHost, roomId])
 
   // ─ ロード中・エラー ───────────────────────────────────────
   if (roomNotFound) {
