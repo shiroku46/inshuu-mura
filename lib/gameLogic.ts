@@ -85,7 +85,10 @@ export function canPlaceTerrainCardAt(
   const cell = state.villageMap.grid[row]?.[col]
   if (cell !== null && cell !== undefined) return false
 
-  const entranceCol = 2
+  // 村の入口未選択時は配置不可
+  const entranceCol = state.villageMap.entranceCol
+  if (entranceCol < 0) return false
+
   const neighbors = [
     { col: col - 1, row },
     { col: col + 1, row },
@@ -95,7 +98,7 @@ export function canPlaceTerrainCardAt(
 
   const cardConnections = card.type === 'terrain' ? getRotatedConnections(card.connections, rotation) : []
 
-  // 村の入口に隣接している場合（col=2, row=3または上下の一段のみ）
+  // 村の入口に隣接している場合（entranceCol, row=3または上下の一段のみ）
   if (col === entranceCol && row >= 2 && row <= 3 && card.type === 'terrain') {
     // row=3: 村の入口へ'down'接続
     // row=2: 村の入口へ'down'接続
@@ -105,8 +108,8 @@ export function canPlaceTerrainCardAt(
   }
 
   // 村の入口に左右で接続する場合（row=3の左右）
-  if (row === 3 && (col === 1 || col === 3) && card.type === 'terrain') {
-    const dir = col === 1 ? 'right' : 'left'
+  if (row === 3 && (col === entranceCol - 1 || col === entranceCol + 1) && card.type === 'terrain') {
+    const dir = col === entranceCol - 1 ? 'right' : 'left'
     if (cardConnections.includes(dir)) {
       return true
     }
@@ -171,11 +174,16 @@ export function findConnectedTiles(state: GameState): Set<string> {
   const connected = new Set<string>()
   const queue: Array<{ col: number; row: number }> = []
 
-  // 村の入口：下辺中央（col=2, row=3）のみ
-  const entranceCol = 2
+  // 村の入口未選択時は接続チェックなし
+  if (state.villageMap.entranceCol < 0) {
+    return connected
+  }
+
+  // 村の入口：下辺（row=3、col は可変）
+  const entranceCol = state.villageMap.entranceCol
   const entranceRow = 3
   const entranceCell = state.villageMap.grid[entranceRow]?.[entranceCol]
-  if (entranceCell && entranceCell.type === 'terrain' && !entranceCell.disabled && entranceCell.card.connections.includes('down')) {
+  if (entranceCell && entranceCell.type === 'terrain' && !entranceCell.disabled && getRotatedConnections(entranceCell.card.connections, entranceCell.rotation).includes('down')) {
     const key = `${entranceCol},${entranceRow}`
     connected.add(key)
     queue.push({ col: entranceCol, row: entranceRow })
@@ -294,13 +302,14 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
   const villageMap: VillageMap = {
     faithCard,
     faithPosition: { col: faithCol, row: 0 },
+    entranceCol: -1,
     grid,
   }
 
   return {
     round: 1,
     currentPlayerIndex: 0,
-    phase: 'roundStart' as const,
+    phase: 'selectEntrance' as const,
     settledRound: 0,
     visitorAppeared: 0,
     sacrificeEventTriggered: 0,
@@ -317,6 +326,21 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
     discardedCards: [],
     placedThisRound: players.map(() => false),
     logs: [],
+  }
+}
+
+export function selectEntrance(state: GameState, col: number): GameState {
+  // バリデーション
+  if (state.phase !== 'selectEntrance') return state
+  if (col < 0 || col >= 5) return state
+  if (state.currentPlayerIndex !== 0) return state
+  if (state.villageMap.entranceCol >= 0) return state
+
+  // 入口を設定して roundStart フェーズへ遷移
+  return {
+    ...state,
+    villageMap: { ...state.villageMap, entranceCol: col },
+    phase: 'roundStart' as const,
   }
 }
 

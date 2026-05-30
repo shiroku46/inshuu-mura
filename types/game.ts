@@ -112,11 +112,12 @@ export type Player = {
 export type VillageMap = {
   faithCard: FaithCard
   faithPosition: { col: number; row: number }
+  entranceCol: number
   grid: VillageGrid
 }
 
 // ─── ゲームステート ───────────────────────────────────────────
-export type GamePhase = 'roundStart' | 'playerTurn' | 'roundEnd' | 'gameEnd'
+export type GamePhase = 'selectEntrance' | 'roundStart' | 'playerTurn' | 'roundEnd' | 'gameEnd'
 
 export type GameState = {
   round: number
