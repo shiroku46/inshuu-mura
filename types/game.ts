@@ -17,7 +17,10 @@ export type CardBase = {
 }
 
 // ─── 信仰対象カード ───────────────────────────────────────────
-export type FaithCard = CardBase & { type: 'faith' }
+export type FaithCard = CardBase & {
+  type: 'faith'
+  connections: Direction[]
+}
 
 // ─── 地形カード ───────────────────────────────────────────────
 export type TerrainCard = CardBase & {

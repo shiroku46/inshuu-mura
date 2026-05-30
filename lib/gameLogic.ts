@@ -113,14 +113,6 @@ export function canPlaceTerrainCardAt(
       continue
     }
 
-    // 隣接セルが信仰カード → 新規カードがこの方向に接続していない場合のみOK
-    if (neighborCell.type === 'faith') {
-      if (cardConnections.includes(dir)) {
-        return false  // 新規カードが信仰カード方向に接続している場合は配置不可
-      }
-      continue  // 接続していない場合はスキップ
-    }
-
     // 隣接セルが無効 → 配置不可
     if ((neighborCell as any).disabled) {
       return false

@@ -9,6 +9,7 @@ export const FAITH_CARDS: FaithCard[] = [
     description: '山奥に宿る古き神。開放が進むほど祟りも増す。',
     tags: ['因習', '祟り'],
     effectText: '開放度上昇時：祟り+1（上昇量分）。訪問者生贄時：因習度+1',
+    connections: ['down'],
   },
   {
     id: 'faith_festival_god',
@@ -17,6 +18,7 @@ export const FAITH_CARDS: FaithCard[] = [
     description: '祭りの音に宿る霊。生贄の儀式を喜ぶ。',
     tags: ['因習', '祟り', '生贄'],
     effectText: '生贄イベント発生時：祟り+1。開放度3以上で訪問者生贄時：因習度+1',
+    connections: ['down'],
   },
 ]
 
