@@ -524,8 +524,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                             ? (cell as any).connectedToEntrance
                               ? 'border-orange-500 bg-orange-900 text-orange-200 cursor-default'
                               : 'border-orange-700 bg-orange-950 text-orange-400 cursor-default'
+                            : canClick
+                            ? 'border-blue-400 bg-blue-800 text-blue-200 cursor-pointer hover:bg-blue-700 font-bold'
                             : selectedHandCardIndex !== null
-                            ? 'border-yellow-500 bg-stone-700 text-yellow-300 cursor-pointer hover:bg-stone-600'
+                            ? 'border-stone-500 bg-stone-700 text-stone-400 cursor-not-allowed opacity-50'
                             : 'border-stone-600 bg-stone-700 text-stone-500 cursor-pointer hover:bg-stone-600'
                         }`}
                         title={
