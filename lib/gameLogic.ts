@@ -89,40 +89,67 @@ export function canPlaceTerrainCardAt(
 
   // 隣接する接続済みカードと矢印が繋がるか確認
   const connectedTiles = findConnectedTiles(state)
-  for (const neighbor of neighbors) {
-    if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
+  let hasConnection = false
 
-    const neighborCell = state.villageMap.grid[neighbor.row]?.[neighbor.col]
-    if (!neighborCell) continue
-    if (neighborCell.type === 'faith') continue
+  // 新規カードの各接続方向について、隣接セルが対応する接続を持つかチェック
+  for (const dir of cardConnections) {
+    let nextCol = col
+    let nextRow = row
 
-    // 隣接セルが接続済みか確認（接続済みでなくても矢印で繋がれば置ける）
-    const isNeighborConnected = connectedTiles.has(`${neighbor.col},${neighbor.row}`)
+    if (dir === 'up') nextRow--
+    else if (dir === 'down') nextRow++
+    else if (dir === 'left') nextCol--
+    else if (dir === 'right') nextCol++
 
-    // 方向を計算
-    let dir: Direction | null = null
-    if (neighbor.col > col) dir = 'right'
-    else if (neighbor.col < col) dir = 'left'
-    else if (neighbor.row > row) dir = 'down'
-    else if (neighbor.row < row) dir = 'up'
+    // 隣接セルが範囲外 → 配置不可
+    if (nextCol < 0 || nextCol >= 5 || nextRow < 0 || nextRow >= 4) {
+      return false
+    }
 
-    if (!dir) continue
+    const neighborCell = state.villageMap.grid[nextRow]?.[nextCol]
 
-    // 逆方向を計算
+    // 隣接セルが空 → 配置不可
+    if (!neighborCell) {
+      return false
+    }
+
+    // 隣接セルが信仰カード → 配置不可
+    if (neighborCell.type === 'faith') {
+      return false
+    }
+
+    // 隣接セルが無効 → 配置不可
+    if ((neighborCell as any).disabled) {
+      return false
+    }
+
+    // 隣接セルが対応する方向の接続を持つか確認
     const oppositeDir = getOppositeDirection(dir)
+    if (!neighborCell.card.connections.includes(oppositeDir)) {
+      return false
+    }
 
-    // 隣接セルが接続済みの場合のみ配置可能
-    if (isNeighborConnected) {
-      if (neighborCell.type === 'terrain' || neighborCell.type === 'facility') {
-        const neighborConnections = neighborCell.card.connections
-        if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
-          return true
-        }
-      }
+    // 隣接セルが接続済みなら接続している
+    if (connectedTiles.has(`${nextCol},${nextRow}`)) {
+      hasConnection = true
     }
   }
 
-  return false
+  // カードが接続方向を持たない場合（connections: []）は、隣接する接続済みセルに接続する場合のみ配置可能
+  if (cardConnections.length === 0) {
+    for (const neighbor of neighbors) {
+      if (neighbor.col < 0 || neighbor.col >= 5 || neighbor.row < 0 || neighbor.row >= 4) continue
+
+      const isNeighborConnected = connectedTiles.has(`${neighbor.col},${neighbor.row}`)
+      if (isNeighborConnected) {
+        return true
+      }
+    }
+    return false
+  }
+
+  // 接続方向を持つカードが、接続先を持つ場合のみ配置可能
+  return hasConnection
 }
 
 export function findConnectedTiles(state: GameState): Set<string> {
