@@ -98,19 +98,9 @@ export function canPlaceTerrainCardAt(
 
   const cardConnections = card.type === 'terrain' ? getRotatedConnections(card.connections, rotation) : []
 
-  // 村の入口に隣接している場合（entranceCol, row=3または上下の一段のみ）
-  if (col === entranceCol && row >= 2 && row <= 3 && card.type === 'terrain') {
-    // row=3: 村の入口へ'down'接続
-    // row=2: 村の入口へ'down'接続
+  // 村の入口の直上（row=3, col=entranceCol）のみに置ける
+  if (col === entranceCol && row === 3 && card.type === 'terrain') {
     if (cardConnections.includes('down')) {
-      return true
-    }
-  }
-
-  // 村の入口に左右で接続する場合（row=3の左右）
-  if (row === 3 && (col === entranceCol - 1 || col === entranceCol + 1) && card.type === 'terrain') {
-    const dir = col === entranceCol - 1 ? 'right' : 'left'
-    if (cardConnections.includes(dir)) {
       return true
     }
   }
