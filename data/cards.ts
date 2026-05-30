@@ -163,7 +163,6 @@ const terrainOutputs: Record<string, { inshuOutput: number; opennessOutput: numb
   terrain_crossroads: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_mountain_vertical: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
   terrain_mountain_horizontal: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
-  terrain_river: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
   terrain_lake: { inshuOutput: 0, opennessOutput: 0, curseOutput: 1 },
 }
 
@@ -279,14 +278,6 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
     connections: ['left', 'right'],
   },
   // 水系
-  {
-    id: 'terrain_river',
-    name: '川',
-    description: '村を流れる川。',
-    tags: ['水', '境界'],
-    effectText: '区域を分ける境界線として機能',
-    connections: ['left', 'right'],
-  },
   {
     id: 'terrain_lake',
     name: '湖',
