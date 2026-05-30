@@ -375,6 +375,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
       <div className="text-xs text-stone-600 mb-2 bg-stone-900 p-2 rounded">
         <div>Round: {gs.round} | Phase: {gs.phase} | Current: {currentPlayer?.name || 'N/A'}</div>
         <div>MySlot: {mySlot} | MyTurn: {String(isMyTurn)} | SelectedFaithTarget: {gs.selectedFaithTargetId || 'なし'}</div>
+        <div>gs.selectedFaithTargetId: {JSON.stringify(gs.selectedFaithTargetId)}</div>
       </div>
 
       {/* ヘッダー */}
