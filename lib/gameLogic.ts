@@ -123,9 +123,17 @@ export function canPlaceTerrainCardAt(
       return false
     }
 
-    // 隣接セルが対応する方向の接続を持つか確認
+    // 双方向接続を確認
     const oppositeDir = getOppositeDirection(dir)
-    if (!neighborCell.card.connections.includes(oppositeDir)) {
+    const neighborHasConnection = neighborCell.card.connections.includes(oppositeDir)
+    const newCardHasConnection = cardConnections.includes(dir)
+
+    // 新規カード側が接続している場合、隣接セルも接続している必要がある
+    if (newCardHasConnection && !neighborHasConnection) {
+      return false
+    }
+    // 隣接セル側が接続している場合、新規カードも接続している必要がある
+    if (neighborHasConnection && !newCardHasConnection) {
       return false
     }
 
