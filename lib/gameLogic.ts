@@ -316,21 +316,12 @@ export function createInitialState(
     if (faithTarget) {
       const initialCard = getCardById(faithTarget.initialCardId)
       if (initialCard && (initialCard.type === 'terrain' || initialCard.type === 'facility')) {
-        // 配置可能マスをリスト化（周囲に拡張可能なマスを優先）
+        // 配置可能マスをリスト化（盤面のすべての空きマス）
         const placeablePositions: Array<{ col: number; row: number }> = []
 
         for (let row = 0; row < 4; row++) {
           for (let col = 0; col < 5; col++) {
-            if (grid[row][col] !== null) continue
-
-            // 外周に接続しているか確認
-            const outsideDirs: Direction[] = []
-            if (col === 0) outsideDirs.push('left')
-            if (col === 4) outsideDirs.push('right')
-            if (row === 0) outsideDirs.push('up')
-            if (row === 3) outsideDirs.push('down')
-
-            if (outsideDirs.some(dir => initialCard.connections.includes(dir))) {
+            if (grid[row][col] === null) {
               placeablePositions.push({ col, row })
             }
           }
