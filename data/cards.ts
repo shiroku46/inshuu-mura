@@ -163,8 +163,6 @@ const terrainOutputs: Record<string, { inshuOutput: number; opennessOutput: numb
   terrain_t_lrd: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_t_lru: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_crossroads: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
-  terrain_mountain_vertical: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
-  terrain_mountain_horizontal: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
   terrain_lake: { inshuOutput: 0, opennessOutput: 0, curseOutput: 1 },
 }
 
@@ -261,23 +259,6 @@ const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOut
     tags: ['移動', '中心'],
     effectText: '4つの方向すべてに接続可能',
     connections: ['up', 'right', 'down', 'left'],
-  },
-  // 山道（2方向）
-  {
-    id: 'terrain_mountain_vertical',
-    name: '山道（南北）',
-    description: '険しい山越えの南北の道。',
-    tags: ['移動', '困難'],
-    effectText: '困難な接続を表す',
-    connections: ['up', 'down'],
-  },
-  {
-    id: 'terrain_mountain_horizontal',
-    name: '山道（東西）',
-    description: '険しい山越えの東西の道。',
-    tags: ['移動', '困難'],
-    effectText: '困難な接続を表す',
-    connections: ['left', 'right'],
   },
   // 水系
   {

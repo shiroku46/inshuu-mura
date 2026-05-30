@@ -160,8 +160,8 @@ export function canPlaceTerrainCardAt(
       }
     }
 
-    // 隣接セルが接続済みなら接続している
-    if (connectedTiles.has(`${nextCol},${nextRow}`)) {
+    // 隣接セルが接続済みであり、かつ新規カードがその方向に接続しているなら接続している
+    if (connectedTiles.has(`${nextCol},${nextRow}`) && newCardHasConnection) {
       hasConnection = true
     }
   }
@@ -348,6 +348,48 @@ export function createInitialState(playerNames: string[] = ['プレイヤー1', 
   }
 }
 
+export function drawCardToHand(state: GameState, playerIndex: number): GameState {
+  const player = state.players[playerIndex]
+
+  // 手札が5枚以上なら何もしない
+  if (player.hand.length >= 5) {
+    return state
+  }
+
+  // terrain と facility のデッキから選択可能なものを列挙
+  const availableDecks: Array<{ deck: (TerrainCard | FacilityCard)[], deckType: 'terrain' | 'facility' }> = []
+  if (state.terrainDeck.length > 0) availableDecks.push({ deck: state.terrainDeck, deckType: 'terrain' })
+  if (state.facilityDeck.length > 0) availableDecks.push({ deck: state.facilityDeck, deckType: 'facility' })
+
+  // どのデッキも空の場合
+  if (availableDecks.length === 0) {
+    return state
+  }
+
+  // ランダムにデッキを選択
+  const selectedDeckInfo = availableDecks[Math.floor(Math.random() * availableDecks.length)]
+  const deck = selectedDeckInfo.deck
+  const drawnCard = deck[0]
+
+  // デッキから取り出し、手札に追加
+  const newPlayers = state.players.map((p, i) => {
+    if (i === playerIndex) {
+      return { ...p, hand: [...p.hand, drawnCard.id] }
+    }
+    return p
+  })
+
+  const newTerrainDeck = selectedDeckInfo.deckType === 'terrain' ? state.terrainDeck.slice(1) : state.terrainDeck
+  const newFacilityDeck = selectedDeckInfo.deckType === 'facility' ? state.facilityDeck.slice(1) : state.facilityDeck
+
+  return {
+    ...state,
+    players: newPlayers,
+    terrainDeck: newTerrainDeck,
+    facilityDeck: newFacilityDeck,
+  }
+}
+
 export function placeCard(
   state: GameState,
   col: number,
@@ -400,7 +442,10 @@ export function placeCard(
   }
 
   // 接続判定を更新
-  return updateConnectivity(intermediateState)
+  const stateAfterConnectivity = updateConnectivity(intermediateState)
+
+  // カード配置後、手札を5枚に補充
+  return drawCardToHand(stateAfterConnectivity, playerIndex)
 }
 
 export function getCardById(cardId: string): TerrainCard | FacilityCard | EventCard | null {
@@ -442,7 +487,7 @@ export function playCard(
     if (newState === state) return state
 
     // 手札から削除
-    const newPlayers = state.players.map((p, i) => {
+    const newPlayers = newState.players.map((p, i) => {
       if (i === playerIndex) {
         return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
       }
@@ -459,7 +504,7 @@ export function playCard(
     if (newState === state) return state
 
     // 手札から削除
-    const newPlayers = state.players.map((p, i) => {
+    const newPlayers = newState.players.map((p, i) => {
       if (i === playerIndex) {
         return { ...p, hand: p.hand.filter((_, j) => j !== cardIndex) }
       }
