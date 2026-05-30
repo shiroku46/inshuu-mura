@@ -5,7 +5,7 @@ import type { GameState, EventCard } from '@/types/game'
 import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, getCardById } from '@/lib/gameLogic'
 import { supabase } from '@/lib/supabase'
 import RulesModal from '@/app/components/RulesModal'
-import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS } from '@/data/cards'
+import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS, FAITH_TARGETS } from '@/data/cards'
 
 const SLOT_LABELS: Record<string, string> = {
   player_1: 'P1（ホスト）',
@@ -61,6 +61,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [selectedPlayerSlot, setSelectedPlayerSlot] = useState<string | null>(null)
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
+  const [selectedFaithTargetId, setSelectedFaithTargetId] = useState<string | null>(null)
 
   // ─ 初期ロード ─────────────────────────────────────────────
   useEffect(() => {
@@ -123,10 +124,11 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   async function handleStart() {
     if (!isHost) return
+    if (!selectedFaithTargetId) return
     const playerNamesList = (['player_1', 'player_2', 'player_3', 'player_4'] as const)
       .filter(slot => connectedSlots.includes(slot))
       .map(slot => playerNames[slot] || `Player ${slot}`)
-    const newState = createInitialState(playerNamesList)
+    const newState = createInitialState(playerNamesList, selectedFaithTargetId)
     await pushState(roomId, newState)
   }
 
@@ -291,9 +293,28 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
           {isHost ? (
             <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
+                <div className="text-sm font-bold text-amber-300">信仰対象を選択</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {FAITH_TARGETS.map(target => (
+                    <button
+                      key={target.id}
+                      onClick={() => setSelectedFaithTargetId(target.id)}
+                      className={`p-2 rounded border-2 text-xs font-bold transition ${
+                        selectedFaithTargetId === target.id
+                          ? 'border-amber-500 bg-amber-900 text-amber-200'
+                          : 'border-stone-600 bg-stone-800 text-stone-300 hover:border-amber-600'
+                      }`}
+                    >
+                      <div>{target.name}</div>
+                      <div className="text-xs text-stone-400">({target.type})</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={handleStart}
-                disabled={connectedSlots.length < 3}
+                disabled={connectedSlots.length < 3 || !selectedFaithTargetId}
                 className="py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-lg transition"
               >
                 ゲーム開始（{connectedSlots.length}人）
