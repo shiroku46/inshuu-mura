@@ -106,6 +106,15 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     }
   }, [])
 
+  // ─ デバッグモード用 pushState ラッパー ─────────────────────
+  const pushStateDebugAware = async (newState: GameState) => {
+    if (debugMode) {
+      setGs(newState)
+    } else {
+      await pushStateDebugAware(newState)
+    }
+  }
+
   // ─ リアルタイム購読 ───────────────────────────────────────
   useEffect(() => {
     // デバッグモード時は Supabase 購読をスキップ
@@ -153,7 +162,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     console.log('FAITH_TARGETS:', FAITH_TARGETS)
     const newState = createInitialState(playerNamesList, randomFaithTargetId)
     console.log('New State selectedFaithTargetId:', newState.selectedFaithTargetId)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handlePlayHandCard(col: number, row: number) {
@@ -183,7 +192,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row)
     setSelectedHandCardIndex(null)
     setSelectedPlayerSlot(null)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handlePlayEventCard(targetCardId: string) {
@@ -194,7 +203,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const newState = playCard(gs, playerIndex, selectedHandCardIndex, undefined, undefined, targetCardId)
     setSelectedHandCardIndex(null)
     setSelectingEventTarget(false)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleEndTurn() {
@@ -202,7 +211,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const newState = endPlayerTurn(gs)
     setSelectedHandCardIndex(null)
     setSelectingEventTarget(false)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handlePassTurn() {
@@ -210,13 +219,13 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const newState = endPlayerTurn(gs)
     setSelectedHandCardIndex(null)
     setSelectingEventTarget(false)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleStartRoundOrTurn() {
     if (!gs || gs.phase !== 'roundStart') return
     const newState = startPlayerTurn(gs)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleStartNextRound() {
@@ -224,32 +233,32 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     const newState = startNextRound(gs)
     setSelectedHandCardIndex(null)
     setSelectingEventTarget(false)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleSettlement() {
     if (!gs) return
     const newState = executeSettlement(gs)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleAppearVisitors() {
     if (!gs) return
     const newState = appearVisitors(gs)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleTriggerSacrificeEvent() {
     if (!gs) return
     const newState = triggerSacrificeEvent(gs)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   async function handleSacrificeVisitor(visitorIndex: number) {
     if (!gs) return
     const newState = sacrificeVisitor(gs, visitorIndex)
     setSelectingSacrificeTarget(false)
-    await pushState(roomId, newState)
+    await pushStateDebugAware(newState)
   }
 
   // ─ ルームコードのコピー ───────────────────────────────────
