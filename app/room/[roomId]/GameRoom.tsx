@@ -498,10 +498,12 @@ export default function GameRoom({ roomId }: { roomId: string }) {
             )}
 
             {/* カード選択時の表示 */}
-            {selectedHandCardIndex !== null && myPlayer && (
+            {selectedHandCardIndex !== null && selectedPlayerSlot && (
               <div className="mb-2 p-2 bg-blue-950 border border-blue-600 rounded text-xs space-y-1.5">
                 {(() => {
-                  const cardId = myPlayer.hand[selectedHandCardIndex]
+                  const selectedPlayer = gs.players.find((p) => p.id === selectedPlayerSlot)
+                  if (!selectedPlayer) return null
+                  const cardId = selectedPlayer.hand[selectedHandCardIndex]
                   const card = getCardById(cardId)
                   if (!card || card.type === 'event') return null
 
