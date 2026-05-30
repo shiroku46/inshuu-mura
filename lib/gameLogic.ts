@@ -101,16 +101,16 @@ export function canPlaceTerrainCardAt(
     else if (dir === 'left') nextCol--
     else if (dir === 'right') nextCol++
 
-    // 隣接セルが範囲外 → 配置不可
+    // 隣接セルが範囲外 → スキップ（配置不可ではない）
     if (nextCol < 0 || nextCol >= 5 || nextRow < 0 || nextRow >= 4) {
-      return false
+      continue
     }
 
     const neighborCell = state.villageMap.grid[nextRow]?.[nextCol]
 
-    // 隣接セルが空 → 配置不可
+    // 隣接セルが空 → スキップ（配置不可ではない）
     if (!neighborCell) {
-      return false
+      continue
     }
 
     // 隣接セルが信仰カード → 配置不可
