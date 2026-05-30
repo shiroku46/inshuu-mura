@@ -134,16 +134,14 @@ export function findConnectedTiles(state: GameState): Set<string> {
     return connected
   }
 
-  // 村の入口の上側（row=2、col は可変）から接続探索をスタート
+  // 村の入口：下辺（row=3、col は可変）
   const entranceCol = state.villageMap.entranceCol
-  const cellAboveEntrance = state.villageMap.grid[2]?.[entranceCol]
-  if (cellAboveEntrance && (cellAboveEntrance.type === 'terrain' || cellAboveEntrance.type === 'facility') && !cellAboveEntrance.disabled) {
-    // 入口に接続している（上に置かれたカードが下に接続している）
-    if (cellAboveEntrance.card.connections.includes('down')) {
-      const key = `${entranceCol},2`
-      connected.add(key)
-      queue.push({ col: entranceCol, row: 2 })
-    }
+  const entranceRow = 3
+  const entranceCell = state.villageMap.grid[entranceRow]?.[entranceCol]
+  if (entranceCell && (entranceCell.type === 'terrain' || entranceCell.type === 'facility') && !entranceCell.disabled && entranceCell.card.connections.includes('down')) {
+    const key = `${entranceCol},${entranceRow}`
+    connected.add(key)
+    queue.push({ col: entranceCol, row: entranceRow })
   }
 
   // BFS
