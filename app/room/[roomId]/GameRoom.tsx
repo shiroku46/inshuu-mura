@@ -61,7 +61,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [selectedPlayerSlot, setSelectedPlayerSlot] = useState<string | null>(null)
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
-  const [selectedFaithTargetId, setSelectedFaithTargetId] = useState<string | null>(null)
 
   // ─ 初期ロード ─────────────────────────────────────────────
   useEffect(() => {
@@ -124,11 +123,12 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   async function handleStart() {
     if (!isHost) return
-    if (!selectedFaithTargetId) return
     const playerNamesList = (['player_1', 'player_2', 'player_3', 'player_4'] as const)
       .filter(slot => connectedSlots.includes(slot))
       .map(slot => playerNames[slot] || `Player ${slot}`)
-    const newState = createInitialState(playerNamesList, selectedFaithTargetId)
+    // ランダムに信仰対象を選択
+    const randomFaithTargetId = FAITH_TARGETS[Math.floor(Math.random() * FAITH_TARGETS.length)].id
+    const newState = createInitialState(playerNamesList, randomFaithTargetId)
     await pushState(roomId, newState)
   }
 
@@ -254,6 +254,13 @@ export default function GameRoom({ roomId }: { roomId: string }) {
       <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center gap-6 p-6">
         <h1 className="text-2xl font-bold text-amber-400 tracking-widest">因習村をつくろう</h1>
 
+        {/* デバッグ情報 */}
+        <div className="text-xs text-stone-500 max-w-sm">
+          <div>isHost: {String(isHost)}</div>
+          <div>mySlot: {mySlot}</div>
+          <div>connectedSlots: {connectedSlots.length}</div>
+        </div>
+
         <div className="w-full max-w-sm bg-stone-900 rounded-xl p-6 border border-stone-700 flex flex-col gap-4">
           <div className="text-center">
             <div className="text-xs text-stone-400 mb-1">部屋コード</div>
@@ -293,28 +300,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
           {isHost ? (
             <div className="flex flex-col gap-2">
-              <div className="flex flex-col gap-2">
-                <div className="text-sm font-bold text-amber-300">信仰対象を選択</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {FAITH_TARGETS.map(target => (
-                    <button
-                      key={target.id}
-                      onClick={() => setSelectedFaithTargetId(target.id)}
-                      className={`p-2 rounded border-2 text-xs font-bold transition ${
-                        selectedFaithTargetId === target.id
-                          ? 'border-amber-500 bg-amber-900 text-amber-200'
-                          : 'border-stone-600 bg-stone-800 text-stone-300 hover:border-amber-600'
-                      }`}
-                    >
-                      <div>{target.name}</div>
-                      <div className="text-xs text-stone-400">({target.type})</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
               <button
                 onClick={handleStart}
-                disabled={connectedSlots.length < 3 || !selectedFaithTargetId}
+                disabled={connectedSlots.length < 3}
                 className="py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold rounded-lg transition"
               >
                 ゲーム開始（{connectedSlots.length}人）
@@ -358,6 +346,12 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   return (
     <div className="h-screen bg-stone-950 text-stone-100 flex flex-col p-4">
+      {/* デバッグ情報 */}
+      <div className="text-xs text-stone-600 mb-2 bg-stone-900 p-2 rounded">
+        <div>Round: {gs.round} | Phase: {gs.phase} | Current: {currentPlayer?.name || 'N/A'}</div>
+        <div>MySlot: {mySlot} | MyTurn: {String(isMyTurn)} | SelectedFaithTarget: {gs.selectedFaithTargetId || 'なし'}</div>
+      </div>
+
       {/* ヘッダー */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div>
