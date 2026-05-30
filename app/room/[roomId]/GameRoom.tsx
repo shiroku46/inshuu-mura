@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import type { GameState, EventCard } from '@/types/game'
-import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, getRotatedConnections, selectEntrance } from '@/lib/gameLogic'
+import { createInitialState, findConnectedTiles, playCard, endPlayerTurn, startPlayerTurn, startNextRound, calculateRoundOutput, executeSettlement, getSettlementDetails, appearVisitors, getVisitorCapacity, getVisitorCountToAppear, shouldTriggerSacrificeEvent, triggerSacrificeEvent, sacrificeVisitor, canPlaceTerrainCardAt, selectEntrance, getCardById } from '@/lib/gameLogic'
 import { supabase } from '@/lib/supabase'
 import RulesModal from '@/app/components/RulesModal'
 import { TERRAIN_CARDS, FACILITY_CARDS, EVENT_CARDS } from '@/data/cards'
@@ -59,7 +59,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [roomNotFound, setRoomNotFound] = useState(false)
   const [selectedHandCardIndex, setSelectedHandCardIndex] = useState<number | null>(null)
   const [selectedPlayerSlot, setSelectedPlayerSlot] = useState<string | null>(null)
-  const [selectedCardRotation, setSelectedCardRotation] = useState<0 | 1 | 2 | 3>(0)
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
 
@@ -118,16 +117,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     }
   }, [roomId])
 
-  // ─ キーボード操作：R キーで回転 ──────────────────────────
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'r' && selectedHandCardIndex !== null) {
-        setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedHandCardIndex])
 
   // ─ 権限チェック ──────────────────────────────────────────
   const isHost = mySlot === 'player_1'
@@ -166,19 +155,16 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
     // 選択カードを確認
     const cardId = gs.players[playerIndex].hand[selectedHandCardIndex]
-    const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
-    const facility = FACILITY_CARDS.find((c) => c.id === cardId)
-    const card = terrain || facility
+    const card = getCardById(cardId)
 
     // 地形・施設カードの場合、配置可能な場所かチェック
-    if (card && (card.type === 'terrain' || card.type === 'facility') && !canPlaceTerrainCardAt(gs, col, row, card, selectedCardRotation)) {
+    if (card && (card.type === 'terrain' || card.type === 'facility') && !canPlaceTerrainCardAt(gs, col, row, card)) {
       return
     }
 
-    const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row, undefined, selectedCardRotation)
+    const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row)
     setSelectedHandCardIndex(null)
     setSelectedPlayerSlot(null)
-    setSelectedCardRotation(0)
     await pushState(roomId, newState)
   }
 
@@ -210,8 +196,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }
 
   async function handleStartRoundOrTurn() {
-    // ラウンド開始ボタン押下時は何もしない
-    // useEffect で自動的に遷移する
+    if (!gs || gs.phase !== 'roundStart') return
+    const newState = startPlayerTurn(gs)
+    await pushState(roomId, newState)
   }
 
   async function handleStartNextRound() {
@@ -252,22 +239,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     await navigator.clipboard.writeText(roomId)
   }
 
-  // ─ ラウンド開始フロー：生贄イベント完了後に自動進行 ───────────
-  useEffect(() => {
-    if (!gs || gs.phase !== 'roundStart') return
-
-    const shouldTrigger = shouldTriggerSacrificeEvent(gs)
-    const hasTriggered = gs.sacrificeEventTriggered === gs.round
-
-    // 生贄イベントが発動しない、または既に処理済み
-    if (!shouldTrigger || hasTriggered) {
-      // 訪問者が登場済みで、自動的にプレイヤーターンに遷移
-      if (gs.visitorAppeared === gs.round && isHost) {
-        const newState = startPlayerTurn(gs)
-        pushState(roomId, newState)
-      }
-    }
-  }, [gs, isHost, roomId])
 
   // ─ ロード中・エラー ───────────────────────────────────────
   if (roomNotFound) {
@@ -494,10 +465,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
         )}
       </div>
 
-      {/* メインエリア：村マップ + ステータス */}
+      {/* メインエリア：村マップ + 選択カード + ステータス */}
       <div className="flex gap-3 mb-3 h-auto">
         {/* 左：村マップグリッド */}
-        <div className="flex flex-col">
+        <div className="flex flex-col flex-1">
           {/* 村マップグリッド */}
           <div className="bg-stone-800 rounded-lg p-3 border border-stone-700 shadow">
             <h2 className="text-sm font-bold text-amber-400 mb-2">村マップ</h2>
@@ -526,33 +497,23 @@ export default function GameRoom({ roomId }: { roomId: string }) {
               </div>
             )}
 
-            {/* カード選択時の回転コントロール */}
+            {/* カード選択時の表示 */}
             {selectedHandCardIndex !== null && myPlayer && (
               <div className="mb-2 p-2 bg-blue-950 border border-blue-600 rounded text-xs space-y-1.5">
                 {(() => {
                   const cardId = myPlayer.hand[selectedHandCardIndex]
-                  const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
-                  const card = terrain
-                  if (!card) return null
+                  const card = getCardById(cardId)
+                  if (!card || card.type === 'event') return null
 
-                  const rotatedConnections = terrain ? getRotatedConnections(terrain.connections, selectedCardRotation) : []
-                  const previewSymbol = getConnectionSymbol(rotatedConnections)
+                  const previewSymbol = getConnectionSymbol(card.connections)
 
                   return (
                     <div className="flex gap-2 items-center">
                       <div className="font-bold text-blue-300 flex-1">{card.name}</div>
-                      <button
-                        onClick={() => setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)}
-                        className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded font-bold"
-                        title="R キーでも回転可能"
-                      >
-                        ↻ {selectedCardRotation * 90}°
-                      </button>
                       <div className="text-blue-200 font-bold">{previewSymbol}</div>
                       <button
                         onClick={() => {
                           setSelectedHandCardIndex(null)
-                          setSelectedCardRotation(0)
                         }}
                         className="px-1.5 py-0.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded"
                       >
@@ -579,10 +540,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     if (canClick && selectedHandCardIndex !== null && selectedPlayerSlot) {
                       const selectedPlayerIdx = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
                       const cardId = selectedPlayerIdx >= 0 ? gs.players[selectedPlayerIdx]?.hand[selectedHandCardIndex] : null
-                      const card = cardId ? TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId) : null
+                      const card = cardId ? getCardById(cardId) : null
                       // 地形・施設カードは接続可能な場所にしか置けない
                       if (card && (card.type === 'terrain' || card.type === 'facility')) {
-                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card, selectedCardRotation)
+                        canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card)
                       }
                     }
 
@@ -635,14 +596,14 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           <>
                             <div className="text-xs">🌲</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>
-                            <div className="text-xs">{getConnectionSymbol(getRotatedConnections(cell.card.connections, cell.rotation))}</div>
-                            <div className="text-xs text-stone-400">{cell.rotation * 90}°</div>
+                            <div className="text-xs">{getConnectionSymbol(cell.card.connections)}</div>
                             <div className="text-xs mt-0.5">{isCellDisabled ? '封鎖' : isConnected ? '接続' : '未接続'}</div>
                           </>
                         ) : cell?.type === 'facility' ? (
                           <>
                             <div className="text-xs">🏘️</div>
                             <div className="text-xs font-semibold">{cell.card.name}</div>
+                            <div className="text-xs">{getConnectionSymbol(cell.card.connections)}</div>
                             <div className="text-xs mt-0.5">{isCellDisabled ? '封鎖' : (cell as any).connectedToEntrance ? '有効' : '未接続'}</div>
                           </>
                         ) : null}
@@ -839,10 +800,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     </div>
                     <div className="space-y-0.5">
                       {player.hand.map((cardId, idx) => {
-                        const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
-                        const facility = FACILITY_CARDS.find((c) => c.id === cardId)
-                        const event = EVENT_CARDS.find((c) => c.id === cardId)
-                        const card = terrain || facility || event
+                        const card = getCardById(cardId)
                         if (!card) return null
 
                         let icon = '?'
@@ -851,7 +809,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                         if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
-                        const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
+                        const rotated = (card.type === 'terrain' || card.type === 'facility') ? card.connections : []
+                        const arrows = rotated.length > 0 ? getConnectionSymbol(rotated) : ''
                         const canSelectCard = gs.phase === 'playerTurn' && playerIdx === gs.currentPlayerIndex && !gs.placedThisRound[playerIdx]
                         return (
                           <button
@@ -885,10 +844,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     <div className="font-bold text-yellow-300">
                       {(() => {
                         const cardId = myPlayer.hand[selectedHandCardIndex]
-                        const card = TERRAIN_CARDS.find((c) => c.id === cardId) ||
-                                     FACILITY_CARDS.find((c) => c.id === cardId) ||
-                                     EVENT_CARDS.find((c) => c.id === cardId)
-                        const arrows = card?.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
+                        const card = getCardById(cardId)
+                        const rotated = (card?.type === 'terrain' || card?.type === 'facility') ? card.connections : []
+                        const arrows = rotated.length > 0 ? getConnectionSymbol(rotated) : ''
                         return (
                           <>
                             {card?.name || '？'} {arrows && <span className="ml-0.5">{arrows}</span>}
@@ -914,10 +872,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                   )}
 
                   {myPlayer && myPlayer.hand.map((cardId, idx) => {
-                    const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
-                    const facility = FACILITY_CARDS.find((c) => c.id === cardId)
-                    const event = EVENT_CARDS.find((c) => c.id === cardId)
-                    const card = terrain || facility || event
+                    const card = getCardById(cardId)
                     if (!card) return null
 
                     let icon = '?'
@@ -926,7 +881,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     if (card.type === 'facility') { icon = '🏘️'; color = 'bg-orange-950' }
                     if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
-                    const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
+                    const rotated = (card.type === 'terrain' || card.type === 'facility') ? card.connections : []
+                    const arrows = rotated.length > 0 ? getConnectionSymbol(rotated) : ''
                     const canSelectCard = gs.phase === 'playerTurn' && isMyTurn && !gs.placedThisRound[gs.currentPlayerIndex]
 
                     return (
@@ -936,7 +892,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                           if (canSelectCard) {
                             setSelectedHandCardIndex(idx)
                             setSelectedPlayerSlot(mySlot)
-                            setSelectedCardRotation(0)
                           }
                         }}
                         disabled={!canSelectCard}

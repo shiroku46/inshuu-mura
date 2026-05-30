@@ -150,48 +150,135 @@ export const OBJECTIVE_CARDS: ObjectiveCard[] = [
 
 // ─── 地形カード出力値を定義 ────────────────────────────────────
 const terrainOutputs: Record<string, { inshuOutput: number; opennessOutput: number; curseOutput: number }> = {
-  terrain_normal_road: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
-  terrain_curved_road: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_straight_vertical: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_straight_horizontal: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_curve_ur: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_curve_rd: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_curve_dl: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_curve_lu: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_t_urd: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_t_rdl: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_t_dlu: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
+  terrain_t_lur: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
   terrain_crossroads: { inshuOutput: 0, opennessOutput: 0, curseOutput: 0 },
-  terrain_mountain_path: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  terrain_mountain_vertical: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
+  terrain_mountain_horizontal: { inshuOutput: 1, opennessOutput: 0, curseOutput: 0 },
   terrain_river: { inshuOutput: 0, opennessOutput: 1, curseOutput: 0 },
   terrain_lake: { inshuOutput: 0, opennessOutput: 0, curseOutput: 1 },
 }
 
 // ─── 地形カード ───────────────────────────────────────────────
 const TERRAIN_CARD_DEFS: Omit<TerrainCard, 'type' | 'inshuOutput' | 'opennessOutput' | 'curseOutput'>[] = [
+  // 直線道
   {
-    id: 'terrain_normal_road',
-    name: '普通の道',
-    description: '村を通る普通の道。',
+    id: 'terrain_straight_vertical',
+    name: '縦の道',
+    description: '村を南北に通る道。',
     tags: ['移動', '繋がり'],
     effectText: '他のカードへの接続を可能にする',
     connections: ['up', 'down'],
   },
   {
-    id: 'terrain_curved_road',
-    name: '曲がり道',
-    description: '複雑に曲がった道。',
+    id: 'terrain_straight_horizontal',
+    name: '横の道',
+    description: '村を東西に通る道。',
+    tags: ['移動', '繋がり'],
+    effectText: '他のカードへの接続を可能にする',
+    connections: ['left', 'right'],
+  },
+  // 曲がり道（4方向：角の位置で定義）
+  {
+    id: 'terrain_curve_ur',
+    name: '曲がり道（上右角）',
+    description: '上右の角。下と左に向かう曲がった道。',
+    tags: ['移動', '複雑'],
+    effectText: '方向を変える接続が可能',
+    connections: ['down', 'left'],
+  },
+  {
+    id: 'terrain_curve_rd',
+    name: '曲がり道（右下角）',
+    description: '右下の角。上と左に向かう曲がった道。',
+    tags: ['移動', '複雑'],
+    effectText: '方向を変える接続が可能',
+    connections: ['up', 'left'],
+  },
+  {
+    id: 'terrain_curve_dl',
+    name: '曲がり道（下左角）',
+    description: '下左の角。上と右に向かう曲がった道。',
     tags: ['移動', '複雑'],
     effectText: '方向を変える接続が可能',
     connections: ['up', 'right'],
   },
   {
-    id: 'terrain_crossroads',
-    name: '辻道',
-    description: '複数の道が交わる地点。',
-    tags: ['移動', '中心'],
-    effectText: '複数のカードを繋ぐことができる',
-    connections: ['up', 'right', 'down', 'left'],
+    id: 'terrain_curve_lu',
+    name: '曲がり道（左上角）',
+    description: '左上の角。下と右に向かう曲がった道。',
+    tags: ['移動', '複雑'],
+    effectText: '方向を変える接続が可能',
+    connections: ['down', 'right'],
+  },
+  // T字路（4方向）
+  {
+    id: 'terrain_t_urd',
+    name: 'T字路（上右下）',
+    description: '上・右・下に向かう3方向の分岐。',
+    tags: ['移動', '分岐'],
+    effectText: '3つの方向に接続可能',
+    connections: ['up', 'right', 'down'],
   },
   {
-    id: 'terrain_mountain_path',
-    name: '山道',
-    description: '険しい山越えの道。',
+    id: 'terrain_t_rdl',
+    name: 'T字路（右下左）',
+    description: '右・下・左に向かう3方向の分岐。',
+    tags: ['移動', '分岐'],
+    effectText: '3つの方向に接続可能',
+    connections: ['right', 'down', 'left'],
+  },
+  {
+    id: 'terrain_t_dlu',
+    name: 'T字路（下左上）',
+    description: '下・左・上に向かう3方向の分岐。',
+    tags: ['移動', '分岐'],
+    effectText: '3つの方向に接続可能',
+    connections: ['down', 'left', 'up'],
+  },
+  {
+    id: 'terrain_t_lur',
+    name: 'T字路（左上右）',
+    description: '左・上・右に向かう3方向の分岐。',
+    tags: ['移動', '分岐'],
+    effectText: '3つの方向に接続可能',
+    connections: ['left', 'up', 'right'],
+  },
+  // 十字路
+  {
+    id: 'terrain_crossroads',
+    name: '辻道',
+    description: '複数の道が交わる中心地点。',
+    tags: ['移動', '中心'],
+    effectText: '4つの方向すべてに接続可能',
+    connections: ['up', 'right', 'down', 'left'],
+  },
+  // 山道（2方向）
+  {
+    id: 'terrain_mountain_vertical',
+    name: '山道（南北）',
+    description: '険しい山越えの南北の道。',
     tags: ['移動', '困難'],
     effectText: '困難な接続を表す',
     connections: ['up', 'down'],
   },
+  {
+    id: 'terrain_mountain_horizontal',
+    name: '山道（東西）',
+    description: '険しい山越えの東西の道。',
+    tags: ['移動', '困難'],
+    effectText: '困難な接続を表す',
+    connections: ['left', 'right'],
+  },
+  // 水系
   {
     id: 'terrain_river',
     name: '川',
@@ -246,6 +333,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '信仰の中心となる大きな神社。',
     tags: ['信仰', '中心'],
     effectText: '（将来実装：信仰関連の効果）',
+    connections: ['up', 'down'],
   },
   {
     id: 'facility_old_well',
@@ -253,6 +341,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '村の古い井戸。祟りの源？',
     tags: ['祟り', '秘密'],
     effectText: '（将来実装：祟り関連の効果）',
+    connections: [],
   },
   {
     id: 'facility_police_box',
@@ -260,6 +349,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '警察の詰所。秩序を守る場所。',
     tags: ['開放', '秩序'],
     effectText: '（将来実装：開放度関連の効果）',
+    connections: ['up', 'right'],
   },
   {
     id: 'facility_information_center',
@@ -267,6 +357,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '村の観光情報を発信する場所。',
     tags: ['開放', '訪問者'],
     effectText: '（将来実装：訪問者・開放度関連の効果）',
+    connections: ['left', 'right'],
   },
   {
     id: 'facility_graveyard',
@@ -274,6 +365,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '村の古い歴史を埋葬する場所。',
     tags: ['因習', '祟り'],
     effectText: '（将来実装：因習・祟り関連の効果）',
+    connections: ['up'],
   },
   {
     id: 'facility_small_shrine',
@@ -281,6 +373,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '小さな祠。信仰の拠点。',
     tags: ['信仰'],
     effectText: '（将来実装：信仰関連の効果）',
+    connections: ['down'],
   },
 ]
 

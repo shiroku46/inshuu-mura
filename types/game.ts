@@ -31,6 +31,7 @@ export type TerrainCard = CardBase & {
 // ─── 施設カード ───────────────────────────────────────────────
 export type FacilityCard = CardBase & {
   type: 'facility'
+  connections: Direction[]
   connectedToEntrance: boolean
   inshuOutput: number
   opennessOutput: number
@@ -75,7 +76,6 @@ export type ObjectiveCard = CardBase & {
 export type PlacedTerrainCard = {
   type: 'terrain'
   card: TerrainCard
-  rotation: 0 | 1 | 2 | 3
   disabled: boolean
   connectedToEntrance: boolean
   overlayEvent?: EventCard
@@ -84,7 +84,6 @@ export type PlacedTerrainCard = {
 export type PlacedFacilityCard = {
   type: 'facility'
   card: FacilityCard
-  rotation: 0 | 1 | 2 | 3
   disabled: boolean
   connectedToEntrance: boolean
   overlayEvent?: EventCard

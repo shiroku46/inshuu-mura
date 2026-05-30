@@ -14,21 +14,6 @@ function getOppositeDirection(dir: Direction): Direction {
   return dir === 'up' ? 'down' : dir === 'down' ? 'up' : dir === 'left' ? 'right' : 'left'
 }
 
-export function getRotatedConnections(
-  baseConnections: Direction[],
-  rotationCount: 0 | 1 | 2 | 3
-): Direction[] {
-  const directionMap = {
-    0: { up: 'up' as const, right: 'right' as const, down: 'down' as const, left: 'left' as const },
-    1: { up: 'right' as const, right: 'down' as const, down: 'left' as const, left: 'up' as const },
-    2: { up: 'down' as const, right: 'left' as const, down: 'up' as const, left: 'right' as const },
-    3: { up: 'left' as const, right: 'up' as const, down: 'right' as const, left: 'down' as const },
-  }
-  const rotation = (rotationCount % 4) as 0 | 1 | 2 | 3
-  const mapping = directionMap[rotation]
-  return baseConnections.map(dir => mapping[dir as Direction])
-}
-
 function isConnected(state: GameState, col1: number, row1: number, col2: number, row2: number): boolean {
   const cell1 = state.villageMap.grid[row1]?.[col1]
   const cell2 = state.villageMap.grid[row2]?.[col2]
@@ -55,17 +40,15 @@ function isConnected(state: GameState, col1: number, row1: number, col2: number,
   // cell1は地形カード
   if (cell1.type !== 'terrain') return false
   if ((cell1 as any).disabled) return false
-  const connections1 = getRotatedConnections(cell1.card.connections, cell1.rotation)
-  if (!connections1.includes(dir1)) return false
+  if (!cell1.card.connections.includes(dir1)) return false
 
   // cell2は地形または施設カード
   if (cell2.type === 'terrain') {
     if ((cell2 as any).disabled) return false
-    const connections2 = getRotatedConnections(cell2.card.connections, cell2.rotation)
-    return connections2.includes(dir2)
+    return cell2.card.connections.includes(dir2)
   } else if (cell2.type === 'facility') {
-    // 施設カードは接続方向を持たないので、単に隣接していれば「接続可能」とする
-    return true
+    if ((cell2 as any).disabled) return false
+    return cell2.card.connections.includes(dir2)
   }
 
   return false
@@ -75,8 +58,7 @@ export function canPlaceTerrainCardAt(
   state: GameState,
   col: number,
   row: number,
-  card: TerrainCard | FacilityCard,
-  rotation: 0 | 1 | 2 | 3 = 0
+  card: TerrainCard | FacilityCard
 ): boolean {
   // セルが範囲内か確認
   if (col < 0 || col >= 5 || row < 0 || row >= 4) return false
@@ -96,7 +78,7 @@ export function canPlaceTerrainCardAt(
     { col, row: row + 1 },
   ]
 
-  const cardConnections = card.type === 'terrain' ? getRotatedConnections(card.connections, rotation) : []
+  const cardConnections = card.connections
 
   // 村の入口の直上（row=3, col=entranceCol）のみに置ける
   if (col === entranceCol && row === 3 && card.type === 'terrain') {
@@ -135,26 +117,19 @@ export function canPlaceTerrainCardAt(
       if (neighborCell.type === 'terrain') {
         // 両方向に矢印があるか確認
         if (card.type === 'terrain') {
-          const neighborConnections = getRotatedConnections(neighborCell.card.connections, neighborCell.rotation)
+          const neighborConnections = neighborCell.card.connections
           if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
             return true
           }
         }
       } else if (neighborCell.type === 'facility') {
-        // 施設カードに隣接する場合、自分が方向を持っていれば配置可能
-        if (card.type === 'terrain' && cardConnections.includes(dir)) {
+        const neighborConnections = neighborCell.card.connections
+        if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
           return true
         }
       }
     }
 
-    // 隣接セルが接続済みでなくても、矢印が繋がる地形カードがあれば置ける
-    if (neighborCell.type === 'terrain' && card.type === 'terrain') {
-      const neighborConnections = getRotatedConnections(neighborCell.card.connections, neighborCell.rotation)
-      if (cardConnections.includes(dir) && neighborConnections.includes(oppositeDir)) {
-        return true
-      }
-    }
   }
 
   return false
@@ -173,7 +148,7 @@ export function findConnectedTiles(state: GameState): Set<string> {
   const entranceCol = state.villageMap.entranceCol
   const entranceRow = 3
   const entranceCell = state.villageMap.grid[entranceRow]?.[entranceCol]
-  if (entranceCell && entranceCell.type === 'terrain' && !entranceCell.disabled && getRotatedConnections(entranceCell.card.connections, entranceCell.rotation).includes('down')) {
+  if (entranceCell && entranceCell.type === 'terrain' && !entranceCell.disabled && entranceCell.card.connections.includes('down')) {
     const key = `${entranceCol},${entranceRow}`
     connected.add(key)
     queue.push({ col: entranceCol, row: entranceRow })
@@ -197,7 +172,7 @@ export function findConnectedTiles(state: GameState): Set<string> {
       if (isConnected(state, col, row, neighbor.col, neighbor.row)) {
         connected.add(key)
         const cell = state.villageMap.grid[neighbor.row][neighbor.col]
-        if (cell && cell.type === 'terrain') {
+        if (cell && (cell.type === 'terrain' || cell.type === 'facility')) {
           queue.push(neighbor)
         }
       }
@@ -339,7 +314,6 @@ export function placeCard(
   col: number,
   row: number,
   card: TerrainCard | FacilityCard,
-  rotation: 0 | 1 | 2 | 3 = 0,
   playerIndex: number = state.currentPlayerIndex
 ): GameState {
   // バリデーション
@@ -353,9 +327,9 @@ export function placeCard(
   // グリッドを更新
   const newGrid = state.villageMap.grid.map((r) => [...r])
   if (card.type === 'terrain') {
-    newGrid[row][col] = { type: 'terrain', card, rotation, disabled: false, connectedToEntrance: false }
+    newGrid[row][col] = { type: 'terrain', card, disabled: false, connectedToEntrance: false }
   } else if (card.type === 'facility') {
-    newGrid[row][col] = { type: 'facility', card, rotation, disabled: false, connectedToEntrance: false }
+    newGrid[row][col] = { type: 'facility', card, disabled: false, connectedToEntrance: false }
   }
 
   // デッキから消費
@@ -390,7 +364,7 @@ export function placeCard(
   return updateConnectivity(intermediateState)
 }
 
-function getCardById(cardId: string): TerrainCard | FacilityCard | EventCard | null {
+export function getCardById(cardId: string): TerrainCard | FacilityCard | EventCard | null {
   // 地形カード
   const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
   if (terrain) return terrain
@@ -412,8 +386,7 @@ export function playCard(
   cardIndex: number,
   col?: number,
   row?: number,
-  targetCardId?: string,
-  rotation: 0 | 1 | 2 | 3 = 0
+  targetCardId?: string
 ): GameState {
   if (playerIndex < 0 || playerIndex >= state.players.length) return state
   const player = state.players[playerIndex]
@@ -426,7 +399,7 @@ export function playCard(
   // 地形カード
   if (card.type === 'terrain') {
     if (col === undefined || row === undefined) return state
-    const newState = placeCard(state, col, row, card, rotation)
+    const newState = placeCard(state, col, row, card)
     if (newState === state) return state
 
     // 手札から削除
@@ -443,7 +416,7 @@ export function playCard(
   // 施設カード
   if (card.type === 'facility') {
     if (col === undefined || row === undefined) return state
-    const newState = placeCard(state, col, row, card, rotation)
+    const newState = placeCard(state, col, row, card)
     if (newState === state) return state
 
     // 手札から削除
