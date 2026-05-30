@@ -62,6 +62,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
 
+  // ─ 定数 ──────────────────────────────────────────────────
+  const debugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
+
   // ─ 初期ロード ─────────────────────────────────────────────
   useEffect(() => {
     const slot = sessionStorage.getItem(`mySlot_${roomId}`)
@@ -90,12 +93,15 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   // ─ デバッグモード時の自動初期化 ────────────────────────────
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true' && !gs) {
+    if (debugMode && !gs) {
+      console.log('デバッグモード: ゲーム初期化開始')
       const randomFaithTargetId = FAITH_TARGETS[Math.floor(Math.random() * FAITH_TARGETS.length)].id
+      console.log('ランダム信仰対象:', randomFaithTargetId)
       const initialState = createInitialState(['デバッグP1', 'デバッグP2', 'デバッグP3', 'デバッグP4'], randomFaithTargetId)
+      console.log('初期状態 selectedFaithTargetId:', initialState.selectedFaithTargetId)
       setGs(initialState)
     }
-  }, [gs])
+  }, [debugMode, gs])
 
   // ─ リアルタイム購読 ───────────────────────────────────────
   useEffect(() => {
@@ -129,7 +135,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   // ─ 権限チェック ──────────────────────────────────────────
   const isHost = mySlot === 'player_1'
-  const debugMode = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true'
 
   async function handleStart() {
     if (!isHost) return
