@@ -571,6 +571,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                 <div key={rowIdx} className="flex gap-1 mb-1 last:mb-0">
                   {row.map((cell, colIdx) => {
                     const isFaith = colIdx === gs.villageMap.faithPosition.col && rowIdx === gs.villageMap.faithPosition.row
+                    const isEntrance = rowIdx === 3 && colIdx === gs.villageMap.entranceCol && gs.villageMap.entranceCol >= 0
                     const isConnected = cell?.type === 'terrain' ? cell.connectedToEntrance : false
                     const isCellDisabled = cell?.type === 'terrain' || cell?.type === 'facility' ? cell.disabled : false
 
@@ -598,6 +599,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         className={`w-16 h-16 rounded border-2 text-center text-xs font-bold transition flex flex-col items-center justify-center ${
                           isFaith
                             ? 'border-purple-600 bg-purple-950 text-purple-300 cursor-default'
+                            : isEntrance
+                            ? 'border-red-500 bg-red-900 text-red-200 cursor-default ring-2 ring-red-400'
                             : isCellDisabled
                             ? 'border-gray-600 bg-gray-800 text-gray-500 cursor-default'
                             : cell?.type === 'terrain'
@@ -615,7 +618,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                             : 'border-stone-600 bg-stone-700 text-stone-500 cursor-pointer hover:bg-stone-600'
                         }`}
                         title={
-                          cell?.type === 'terrain'
+                          isEntrance
+                            ? '村の入口'
+                            : cell?.type === 'terrain'
                             ? isConnected
                               ? '接続済み'
                               : '未接続'
@@ -626,7 +631,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                             : ''
                         }
                       >
-                        {isFaith ? (
+                        {isEntrance ? (
+                          <div className="text-lg">⬆️</div>
+                        ) : isFaith ? (
                           <>
                             <div className="text-xs">⛩️</div>
                             <div className="text-xs font-semibold">{gs.villageMap.faithCard.name}</div>
@@ -653,15 +660,17 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                 ))}
 
               {/* グリッドの下に村入口位置インジケーター */}
-              <div className="flex gap-1 mt-1 justify-start">
-                {[0, 1, 2, 3, 4].map((col) => (
-                  <div key={col} className={`w-16 h-6 flex items-center justify-center text-sm font-bold ${
-                    col === 2 ? 'text-amber-400' : 'text-stone-600'
-                  }`}>
-                    {col === 2 ? '↓ 入口' : ''}
-                  </div>
-                ))}
-              </div>
+              {gs.villageMap.entranceCol >= 0 && (
+                <div className="flex gap-1 mt-1 justify-start">
+                  {[0, 1, 2, 3, 4].map((col) => (
+                    <div key={col} className={`w-16 h-6 flex items-center justify-center text-xs font-bold ${
+                      col === gs.villageMap.entranceCol ? 'text-red-400 bg-red-900 rounded' : 'text-stone-600'
+                    }`}>
+                      {col === gs.villageMap.entranceCol ? '⬆️' : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
