@@ -58,6 +58,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({})
   const [roomNotFound, setRoomNotFound] = useState(false)
   const [selectedHandCardIndex, setSelectedHandCardIndex] = useState<number | null>(null)
+  const [selectedPlayerSlot, setSelectedPlayerSlot] = useState<string | null>(null)
   const [selectingEventTarget, setSelectingEventTarget] = useState(false)
   const [selectingSacrificeTarget, setSelectingSacrificeTarget] = useState(false)
 
@@ -129,8 +130,8 @@ export default function GameRoom({ roomId }: { roomId: string }) {
   }
 
   async function handlePlayHandCard(col: number, row: number) {
-    if (!gs || selectedHandCardIndex === null || !mySlot) return
-    const playerIndex = gs.players.findIndex((p) => p.id === mySlot)
+    if (!gs || selectedHandCardIndex === null || !selectedPlayerSlot) return
+    const playerIndex = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
     if (playerIndex < 0) return
 
     // 選択カードを確認
@@ -146,6 +147,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
     const newState = playCard(gs, playerIndex, selectedHandCardIndex, col, row)
     setSelectedHandCardIndex(null)
+    setSelectedPlayerSlot(null)
     await pushState(roomId, newState)
   }
 
@@ -480,9 +482,10 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
                     // 配置可能かチェック
                     let canClick = !isFaith && cell === null && selectedHandCardIndex !== null
-                    if (canClick && selectedHandCardIndex !== null) {
-                      const cardId = gs.players[gs.currentPlayerIndex]?.hand[selectedHandCardIndex]
-                      const card = TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId)
+                    if (canClick && selectedHandCardIndex !== null && selectedPlayerSlot) {
+                      const selectedPlayerIdx = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
+                      const cardId = selectedPlayerIdx >= 0 ? gs.players[selectedPlayerIdx]?.hand[selectedHandCardIndex] : null
+                      const card = cardId ? TERRAIN_CARDS.find((c) => c.id === cardId) || FACILITY_CARDS.find((c) => c.id === cardId) : null
                       // 地形・施設カードは接続可能な場所にしか置けない
                       if (card && (card.type === 'terrain' || card.type === 'facility')) {
                         canClick = canPlaceTerrainCardAt(gs, colIdx, rowIdx, card)
@@ -747,10 +750,13 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         return (
                           <button
                             key={`${player.id}-${idx}`}
-                            onClick={() => setSelectedHandCardIndex(idx)}
+                            onClick={() => {
+                              setSelectedHandCardIndex(idx)
+                              setSelectedPlayerSlot(player.id)
+                            }}
                             disabled={gs.placedThisRound[playerIdx]}
                             className={`w-full text-left px-1 py-0.5 rounded text-xs transition ${
-                              selectedHandCardIndex === idx && gs.currentPlayerIndex === playerIdx
+                              selectedHandCardIndex === idx && selectedPlayerSlot === player.id
                                 ? 'bg-yellow-900 border border-yellow-600 text-yellow-300 font-bold'
                                 : `${color} border border-stone-600 text-stone-300 hover:brightness-110 disabled:opacity-50`
                             }`}
