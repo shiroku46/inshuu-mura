@@ -131,8 +131,18 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   async function handlePlayHandCard(col: number, row: number) {
     if (!gs || selectedHandCardIndex === null || !selectedPlayerSlot) return
+
+    // ターンフェーズ且つ現在のプレイヤーのみ配置可能
+    if (gs.phase !== 'playerTurn') return
+
     const playerIndex = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
     if (playerIndex < 0) return
+
+    // デバッグモード以外は、自分のプレイヤーのみ操作可能
+    if (!debugMode && selectedPlayerSlot !== mySlot) return
+
+    // 現在のプレイヤーでない場合は操作不可
+    if (playerIndex !== gs.currentPlayerIndex) return
 
     // 選択カードを確認
     const cardId = gs.players[playerIndex].hand[selectedHandCardIndex]
@@ -481,7 +491,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     const isCellDisabled = cell?.type === 'terrain' || cell?.type === 'facility' ? cell.disabled : false
 
                     // 配置可能かチェック
-                    let canClick = !isFaith && cell === null && selectedHandCardIndex !== null
+                    let canClick = !isFaith && cell === null && selectedHandCardIndex !== null && gs.phase === 'playerTurn' && selectedPlayerSlot && selectedPlayerSlot === gs.players[gs.currentPlayerIndex]?.id
                     if (canClick && selectedHandCardIndex !== null && selectedPlayerSlot) {
                       const selectedPlayerIdx = gs.players.findIndex((p) => p.id === selectedPlayerSlot)
                       const cardId = selectedPlayerIdx >= 0 ? gs.players[selectedPlayerIdx]?.hand[selectedHandCardIndex] : null
@@ -747,14 +757,17 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                         if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
                         const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
+                        const canSelectCard = gs.phase === 'playerTurn' && playerIdx === gs.currentPlayerIndex && !gs.placedThisRound[playerIdx]
                         return (
                           <button
                             key={`${player.id}-${idx}`}
                             onClick={() => {
-                              setSelectedHandCardIndex(idx)
-                              setSelectedPlayerSlot(player.id)
+                              if (canSelectCard) {
+                                setSelectedHandCardIndex(idx)
+                                setSelectedPlayerSlot(player.id)
+                              }
                             }}
-                            disabled={gs.placedThisRound[playerIdx]}
+                            disabled={!canSelectCard}
                             className={`w-full text-left px-1 py-0.5 rounded text-xs transition ${
                               selectedHandCardIndex === idx && selectedPlayerSlot === player.id
                                 ? 'bg-yellow-900 border border-yellow-600 text-yellow-300 font-bold'
@@ -819,12 +832,18 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                     if (card.type === 'event') { icon = '⚡'; color = 'bg-red-950' }
 
                     const arrows = card.type === 'terrain' ? getConnectionSymbol(card.connections) : ''
+                    const canSelectCard = gs.phase === 'playerTurn' && isMyTurn && !gs.placedThisRound[gs.currentPlayerIndex]
 
                     return (
                       <button
                         key={idx}
-                        onClick={() => setSelectedHandCardIndex(idx)}
-                        disabled={gs.placedThisRound[gs.currentPlayerIndex]}
+                        onClick={() => {
+                          if (canSelectCard) {
+                            setSelectedHandCardIndex(idx)
+                            setSelectedPlayerSlot(mySlot)
+                          }
+                        }}
+                        disabled={!canSelectCard}
                         className={`text-left px-1.5 py-1 rounded text-xs transition ${
                           selectedHandCardIndex === idx
                             ? 'bg-yellow-900 border border-yellow-600 text-yellow-300 font-bold'
