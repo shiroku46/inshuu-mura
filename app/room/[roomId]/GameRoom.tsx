@@ -493,6 +493,44 @@ export default function GameRoom({ roomId }: { roomId: string }) {
           <div className="bg-stone-800 rounded-lg p-3 border border-stone-700 shadow">
             <h2 className="text-sm font-bold text-amber-400 mb-2">村マップ</h2>
 
+            {/* カード選択時の回転コントロール */}
+            {selectedHandCardIndex !== null && myPlayer && (
+              <div className="mb-2 p-2 bg-blue-950 border border-blue-600 rounded text-xs space-y-1.5">
+                {(() => {
+                  const cardId = myPlayer.hand[selectedHandCardIndex]
+                  const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
+                  const card = terrain
+                  if (!card) return null
+
+                  const rotatedConnections = terrain ? getRotatedConnections(terrain.connections, selectedCardRotation) : []
+                  const previewSymbol = getConnectionSymbol(rotatedConnections)
+
+                  return (
+                    <div className="flex gap-2 items-center">
+                      <div className="font-bold text-blue-300 flex-1">{card.name}</div>
+                      <button
+                        onClick={() => setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)}
+                        className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded font-bold"
+                        title="R キーでも回転可能"
+                      >
+                        ↻ {selectedCardRotation * 90}°
+                      </button>
+                      <div className="text-blue-200 font-bold">{previewSymbol}</div>
+                      <button
+                        onClick={() => {
+                          setSelectedHandCardIndex(null)
+                          setSelectedCardRotation(0)
+                        }}
+                        className="px-1.5 py-0.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
             {/* グリッド */}
             <div className="border-2 border-stone-600 rounded-lg p-2 bg-stone-900 inline-block">
 
@@ -873,46 +911,6 @@ export default function GameRoom({ roomId }: { roomId: string }) {
                   })}
                 </div>
               </>
-            )}
-
-            {/* カード選択時の回転パネル */}
-            {selectedHandCardIndex !== null && myPlayer && (
-              <div className="mb-2 p-2 bg-blue-950 border border-blue-600 rounded text-xs space-y-1.5">
-                {(() => {
-                  const cardId = myPlayer.hand[selectedHandCardIndex]
-                  const terrain = TERRAIN_CARDS.find((c) => c.id === cardId)
-                  const card = terrain
-                  if (!card) return null
-
-                  const rotatedConnections = terrain ? getRotatedConnections(terrain.connections, selectedCardRotation) : []
-                  const previewSymbol = getConnectionSymbol(rotatedConnections)
-
-                  return (
-                    <>
-                      <div className="font-bold text-blue-300">{card.name}</div>
-                      <div className="flex gap-1.5 items-center">
-                        <button
-                          onClick={() => setSelectedCardRotation(prev => ((prev + 1) % 4) as 0 | 1 | 2 | 3)}
-                          className="px-2 py-0.5 bg-blue-700 hover:bg-blue-600 text-white text-xs rounded"
-                        >
-                          ↻ 回転
-                        </button>
-                        <div className="text-blue-300 font-bold">{selectedCardRotation * 90}°</div>
-                      </div>
-                      <div className="text-xs text-blue-200">プレビュー: {previewSymbol}</div>
-                      <button
-                        onClick={() => {
-                          setSelectedHandCardIndex(null)
-                          setSelectedCardRotation(0)
-                        }}
-                        className="w-full px-2 py-0.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-xs rounded"
-                      >
-                        解除
-                      </button>
-                    </>
-                  )
-                })()}
-              </div>
             )}
 
             {/* 配置完了時のターン終了ボタン */}
