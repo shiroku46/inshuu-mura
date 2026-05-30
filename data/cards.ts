@@ -356,7 +356,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '村の古い歴史を埋葬する場所。',
     tags: ['因習', '祟り'],
     effectText: '（将来実装：因習・祟り関連の効果）',
-    connections: ['up'],
+    connections: [],
   },
   {
     id: 'facility_small_shrine',
@@ -364,7 +364,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '小さな祠。信仰の拠点。',
     tags: ['信仰'],
     effectText: '（将来実装：信仰関連の効果）',
-    connections: ['down'],
+    connections: ['up', 'down'],
   },
 ]
 
