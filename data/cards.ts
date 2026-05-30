@@ -404,7 +404,7 @@ const FACILITY_CARD_DEFS: Omit<FacilityCard, 'type' | 'connectedToEntrance' | 'i
     description: '小さな祠。信仰の拠点。',
     tags: ['信仰'],
     effectText: 'ラウンド終了時：因習度+1',
-    connections: ['up', 'down'],
+    connections: ['up'],
   },
   {
     id: 'facility_local_museum',
