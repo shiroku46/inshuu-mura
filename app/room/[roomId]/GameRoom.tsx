@@ -105,6 +105,9 @@ export default function GameRoom({ roomId }: { roomId: string }) {
 
   // ─ リアルタイム購読 ───────────────────────────────────────
   useEffect(() => {
+    // デバッグモード時は Supabase 購読をスキップ
+    if (debugMode) return
+
     const channel = supabase
       .channel(`room:${roomId}`)
       .on(
@@ -130,7 +133,7 @@ export default function GameRoom({ roomId }: { roomId: string }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [roomId])
+  }, [roomId, debugMode])
 
 
   // ─ 権限チェック ──────────────────────────────────────────
